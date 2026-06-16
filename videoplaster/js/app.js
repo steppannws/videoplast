@@ -3,6 +3,7 @@ import { WaterGL } from "./water-gl.js";
 import { WarpGL } from "./warp-gl.js";
 import { MouseTouchSource } from "./touch-source.js";
 import { TouchEmitter } from "./output.js";
+import { LeapImageSource } from "./leap-image-source.js";
 
 const glCanvas = document.getElementById("glCanvas");
 const status = document.getElementById("status");
@@ -26,9 +27,86 @@ if (savedPins) warp.pins = savedPins;
 }));
 
 const emitter = new TouchEmitter();
-
 const mouse = new MouseTouchSource(glCanvas);
-mouse.onTouch((ev) => { if (ev.state !== "up") water.addDrop(ev.x, ev.y, ev.strength); emitter.send(ev); });
-mouse.start();
+
+// ---- source selection -------------------------------------------------------
+let current = null;
+let leapSrc = null;            // the active LeapImageSource (if leap-ir), for calib UI
+let cornerMode = false;        // collecting 4 corner clicks on the preview
+let cornerPts = [];
+
+function wire(src){ src.onTouch(ev => { if (ev.state !== "up") water.addDrop(ev.x, ev.y, ev.strength); emitter.send(ev); }); }
+
+// --- LeapImageSource calibration preview ------------------------------------
+const irPreview = document.getElementById("irPreview");
+const irCtx = irPreview ? irPreview.getContext("2d") : null;
+function drawPreview(rgba, w, h, blobs){
+  if (!irCtx) return;
+  irPreview.width = w; irPreview.height = h;
+  const img = irCtx.createImageData(w, h);
+  img.data.set(rgba);
+  irCtx.putImageData(img, 0, 0);
+  irCtx.strokeStyle = "#0f0"; irCtx.lineWidth = 1;
+  for (const b of blobs) irCtx.strokeRect(b.cx-3, b.cy-3, 6, 6);
+}
+
+function attachLeapCalib(src){
+  src.previewCb = (rgba, w, h, blobs) => drawPreview(rgba, w, h, blobs);
+  if (irPreview) {
+    irPreview.onclick = (e) => {
+      if (!cornerMode) return;
+      const r = irPreview.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width * irPreview.width;
+      const y = (e.clientY - r.top) / r.height * irPreview.height;
+      cornerPts.push({ x, y });
+      if (cornerPts.length === 4) {
+        src.setCorners(cornerPts);
+        localStorage.setItem("vp_corners", JSON.stringify(cornerPts));
+        cornerMode = false; cornerPts = []; status.textContent = "esquinas calibradas";
+      } else {
+        status.textContent = `esquina ${cornerPts.length}/4`;
+      }
+    };
+  }
+}
+
+// calibration buttons (act on the active leap source)
+const captureBgBtn = document.getElementById("captureBg");
+if (captureBgBtn) captureBgBtn.onclick = () => { if (leapSrc) { leapSrc.captureBackground(); status.textContent = "fondo capturado"; } };
+const calibCornersBtn = document.getElementById("calibCorners");
+if (calibCornersBtn) calibCornersBtn.onclick = () => { if (leapSrc) { cornerMode = true; cornerPts = []; status.textContent = "clic 4 esquinas en preview"; } };
+
+// blob/detection sliders → leapSrc.opt.* (only effective while leap-ir is active)
+const sliderMap = [
+  ["threshold", "threshold", parseFloat],
+  ["minArea", "minArea", parseFloat],
+  ["maxArea", "maxArea", parseFloat],
+  ["blur", "blurAmt", parseInt],
+  ["erosion", "erosionAmt", parseInt],
+];
+for (const [id, key, parse] of sliderMap) {
+  const el = document.getElementById(id); if (!el) continue;
+  el.oninput = () => { if (leapSrc) leapSrc.opt[key] = parse(el.value, 10); };
+}
+const invertEl = document.getElementById("invert");
+if (invertEl) invertEl.onchange = () => { if (leapSrc) leapSrc.opt.invert = invertEl.checked; };
+
+function setSource(name){
+  if (current) current.stop();
+  leapSrc = null;
+  if (name === "mouse") { current = mouse; }
+  else if (name === "leap-ir") {
+    current = new LeapImageSource();
+    leapSrc = current;
+    const saved = JSON.parse(localStorage.getItem("vp_corners") || "null"); if (saved) current.setCorners(saved);
+    attachLeapCalib(current);
+  }
+  if (!current) return;
+  wire(current); current.start();
+  status.textContent = `fuente: ${name}`;
+}
+
+document.getElementById("sourceSel").onchange = (e) => setSource(e.target.value);
+setSource("mouse");
 
 (function loop(){ water.step(); const tex = water.renderToTexture(); warp.draw(tex); requestAnimationFrame(loop); })();

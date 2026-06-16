@@ -19,6 +19,17 @@
     <label>BL X <input type="range" id="blx" min="-400" max="1200" step="1" value="0"></label>
     <label>BL Y <input type="range" id="bly" min="-400" max="900" step="1" value="500"></label>
   </fieldset>
+  <fieldset id="calib"><legend>CALIBRACIÓN LEAP IR</legend>
+    <canvas id="irPreview" width="320" height="240"></canvas>
+    <button id="captureBg">CAPTURAR FONDO</button>
+    <button id="calibCorners">CALIBRAR ESQUINAS</button>
+    <label><input type="checkbox" id="invert"> INVERTIR</label>
+    <label>UMBRAL <input type="range" id="threshold" min="0" max="255" step="1" value="40"></label>
+    <label>ÁREA MÍN <input type="range" id="minArea" min="0" max="500" step="1" value="20"></label>
+    <label>ÁREA MÁX <input type="range" id="maxArea" min="100" max="20000" step="100" value="8000"></label>
+    <label>DESENFOQUE <input type="range" id="blur" min="0" max="6" step="1" value="1"></label>
+    <label>EROSIÓN <input type="range" id="erosion" min="0" max="6" step="1" value="2"></label>
+  </fieldset>
   <span id="status">listo</span>
 </div>
 <script type="module" src="js/app.js"></script>
