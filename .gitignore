@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 spike_frame.pgm
 .DS_Store
+.venv/
+leapc-python-bindings/
