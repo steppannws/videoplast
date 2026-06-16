@@ -46,7 +46,7 @@ function program(gl, fs){ const p=gl.createProgram();
 
 export class WaterGL {
   constructor(gl, simW=512, simH=320){
-    this.gl=gl; this.w=simW; this.h=simH; this.damp=0.985; this.intensity=0.5;
+    this.gl=gl; this.w=simW; this.h=simH; this.damp=0.985; this.intensity=0.5; this.radius=0.03;
     const ext=gl.getExtension("OES_texture_float"); this.type = ext ? gl.FLOAT : gl.UNSIGNED_BYTE;
     if(!ext) console.warn("OES_texture_float unavailable — water uses 8-bit fallback");
     this.progUpdate=program(gl,UPDATE_FS); this.progDrop=program(gl,DROP_FS); this.progRender=program(gl,RENDER_FS);
@@ -71,7 +71,7 @@ export class WaterGL {
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.texCur);
     gl.uniform1i(gl.getUniformLocation(this.progDrop,"u_cur"),0);
     gl.uniform2f(gl.getUniformLocation(this.progDrop,"u_pt"),x,1.0-y);
-    gl.uniform1f(gl.getUniformLocation(this.progDrop,"u_rad"),0.03);
+    gl.uniform1f(gl.getUniformLocation(this.progDrop,"u_rad"),this.radius);
     gl.uniform1f(gl.getUniformLocation(this.progDrop,"u_amp"),0.6*strength);
     gl.uniform2f(gl.getUniformLocation(this.progDrop,"u_aspect"),1.0,this.h/this.w);
     this._drawTo(this.texTmp); gl.drawArrays(gl.TRIANGLE_STRIP,0,4);

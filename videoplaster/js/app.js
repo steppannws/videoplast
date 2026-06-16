@@ -27,6 +27,14 @@ if (savedPins) warp.pins = savedPins;
   el.oninput = () => { warp.pins[k][axis] = parseFloat(el.value); localStorage.setItem("vp_pins", JSON.stringify(warp.pins)); };
 }));
 
+// water tuning sliders → live water instance
+const waterIntensityEl = document.getElementById("waterIntensity");
+if (waterIntensityEl) waterIntensityEl.oninput = () => { water.intensity = parseFloat(waterIntensityEl.value); };
+const waterDampEl = document.getElementById("waterDamp");
+if (waterDampEl) waterDampEl.oninput = () => { water.damp = parseFloat(waterDampEl.value); };
+const waterRadiusEl = document.getElementById("waterRadius");
+if (waterRadiusEl) waterRadiusEl.oninput = () => { water.radius = parseFloat(waterRadiusEl.value); };
+
 const emitter = new TouchEmitter();
 const mouse = new MouseTouchSource(glCanvas);
 
