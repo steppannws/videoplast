@@ -2,6 +2,7 @@
 import { WaterGL } from "./water-gl.js";
 import { WarpGL } from "./warp-gl.js";
 import { MouseTouchSource } from "./touch-source.js";
+import { TouchEmitter } from "./output.js";
 
 const glCanvas = document.getElementById("glCanvas");
 const status = document.getElementById("status");
@@ -24,8 +25,10 @@ if (savedPins) warp.pins = savedPins;
   el.oninput = () => { warp.pins[k][axis] = parseFloat(el.value); localStorage.setItem("vp_pins", JSON.stringify(warp.pins)); };
 }));
 
+const emitter = new TouchEmitter();
+
 const mouse = new MouseTouchSource(glCanvas);
-mouse.onTouch((ev) => { if (ev.state !== "up") water.addDrop(ev.x, ev.y, ev.strength); });
+mouse.onTouch((ev) => { if (ev.state !== "up") water.addDrop(ev.x, ev.y, ev.strength); emitter.send(ev); });
 mouse.start();
 
 (function loop(){ water.step(); const tex = water.renderToTexture(); warp.draw(tex); requestAnimationFrame(loop); })();
