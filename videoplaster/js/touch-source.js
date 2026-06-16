@@ -13,7 +13,7 @@ export class TouchSource {
 
 // Mouse: press = down, drag = move, release = up. Single pointer → id 0.
 export class MouseTouchSource extends TouchSource {
-  constructor(canvas) { super(); this.name = "mouse"; this.canvas = canvas; this.down = false; }
+  constructor(canvas) { super(); this.name = "mouse"; this.canvas = canvas; this.down = false; this._active = false; }
   _pos(e) {
     const r = this.canvas.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
@@ -21,6 +21,8 @@ export class MouseTouchSource extends TouchSource {
     return clientToSurface(r, cx, cy);
   }
   start() {
+    if (this._active) return;
+    this._active = true;
     this._md = (e) => { this.down = true; const p = this._pos(e); this.emit({ id:0, ...p, z:0, strength:1, state:"down" }); };
     this._mm = (e) => { if (!this.down) return; const p = this._pos(e); this.emit({ id:0, ...p, z:0, strength:0.6, state:"move" }); };
     this._mu = () => { if (!this.down) return; this.down = false; this.emit({ id:0, x:0, y:0, z:0, strength:0, state:"up" }); };
@@ -29,6 +31,7 @@ export class MouseTouchSource extends TouchSource {
     window.addEventListener("mouseup", this._mu);
   }
   stop() {
+    this._active = false;
     this.canvas.removeEventListener("mousedown", this._md);
     window.removeEventListener("mousemove", this._mm);
     window.removeEventListener("mouseup", this._mu);

@@ -35,6 +35,7 @@ export class LeapImageSource extends TouchSource {
       rgba = applyUndist(rgba, this.w, this.h, this.undist.map);
     }
     this.frame = rgba;
+    if (this.bg && this.bg.length !== rgba.length) this.bg = null;
     const detIn = this.bg ? subtractBackground(rgba, this.bg, this.w * this.h) : rgba;
     const { blobs } = findBlobs({ data: detIn, width: this.w, height: this.h }, this.opt);
     // image px → surface UV via homography (skip if not calibrated)

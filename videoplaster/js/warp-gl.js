@@ -6,12 +6,17 @@ void main(){ vec2 fp=vec2(v_uv.x*u_res.x,(1.0-v_uv.y)*u_res.y); vec3 h=u_Hinv*ve
   vec2 uv=vec2(sp.x/u_res.x,1.0-sp.y/u_res.y);
   if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0) gl_FragColor=vec4(0,0,0,1); else gl_FragColor=texture2D(u_tex,uv); }`;
 
-function mk(gl,t,s){ const sh=gl.createShader(t); gl.shaderSource(sh,s); gl.compileShader(sh); return sh; }
+function mk(gl, t, s) {
+  const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error("warp shader: " + gl.getShaderInfoLog(sh));
+  return sh;
+}
 
 export class WarpGL {
   constructor(gl, w, h){ this.gl=gl; this.w=w; this.h=h;
     this.prog=gl.createProgram(); gl.attachShader(this.prog,mk(gl,gl.VERTEX_SHADER,VS));
     gl.attachShader(this.prog,mk(gl,gl.FRAGMENT_SHADER,FS)); gl.linkProgram(this.prog);
+    if (!gl.getProgramParameter(this.prog, gl.LINK_STATUS)) throw new Error("warp link: " + gl.getProgramInfoLog(this.prog));
     this.quad=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,this.quad);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
     this.uHinv=gl.getUniformLocation(this.prog,"u_Hinv"); this.uRes=gl.getUniformLocation(this.prog,"u_res");

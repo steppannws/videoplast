@@ -3,7 +3,6 @@
 Phase 2 adds the IR image push on the same WS server."""
 import asyncio, json, argparse
 import websockets
-from pythonosc.udp_client import UDPClient
 from tuio import build_2dcur_bundle
 
 import struct, threading
@@ -40,7 +39,9 @@ def start_leap():
 
 class TuioOut:
     def __init__(self, ip, port):
-        self.client = UDPClient(ip, port)
+        import socket
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._addr = (ip, port)
         self.cursors = {}   # id -> (x, y)
         self.fseq = 0
     def handle(self, ev):
@@ -51,8 +52,7 @@ class TuioOut:
             self.cursors[i] = (float(ev["x"]), float(ev["y"]))
     def flush(self):
         self.fseq += 1
-        # UDPClient.send expects an OscMessage/Bundle; send raw dgram via its transport:
-        self.client._sock.sendto(build_2dcur_bundle(self.cursors, self.fseq), (self.client._address, self.client._port))
+        self._sock.sendto(build_2dcur_bundle(self.cursors, self.fseq), self._addr)
 
 async def push_images(ws):
     while True:

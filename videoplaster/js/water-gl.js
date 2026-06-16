@@ -47,8 +47,13 @@ function program(gl, fs){ const p=gl.createProgram();
 export class WaterGL {
   constructor(gl, simW=512, simH=320){
     this.gl=gl; this.w=simW; this.h=simH; this.damp=0.985; this.intensity=0.5; this.radius=0.03;
-    const ext=gl.getExtension("OES_texture_float"); this.type = ext ? gl.FLOAT : gl.UNSIGNED_BYTE;
-    if(!ext) console.warn("OES_texture_float unavailable — water uses 8-bit fallback");
+    const extFloat = gl.getExtension("OES_texture_float");
+    const extLinear = extFloat && gl.getExtension("OES_texture_float_linear");
+    const extColorBuf = extFloat && (gl.getExtension("WEBGL_color_buffer_float") || gl.getExtension("EXT_color_buffer_float"));
+    this.type = (extFloat && extColorBuf) ? gl.FLOAT : gl.UNSIGNED_BYTE;
+    this._floatLinear = !!extLinear;
+    if (extFloat && !extColorBuf) console.warn("WEBGL_color_buffer_float missing — water uses 8-bit fallback");
+    if (this.type === gl.FLOAT && !extLinear) console.warn("OES_texture_float_linear missing — float textures use NEAREST");
     this.progUpdate=program(gl,UPDATE_FS); this.progDrop=program(gl,DROP_FS); this.progRender=program(gl,RENDER_FS);
     this.quad=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,this.quad);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
@@ -58,9 +63,11 @@ export class WaterGL {
     this.sceneTex=this._tex(gl.RGBA, gl.UNSIGNED_BYTE);
   }
   _tex(fmt, type){ const gl=this.gl,t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
-    gl.texImage2D(gl.TEXTURE_2D,0,fmt||gl.RGBA,this.w,this.h,0,fmt||gl.RGBA,type||this.type,null);
+    const effType = type||this.type;
+    gl.texImage2D(gl.TEXTURE_2D,0,fmt||gl.RGBA,this.w,this.h,0,fmt||gl.RGBA,effType,null);
     [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T].forEach(p=>gl.texParameteri(gl.TEXTURE_2D,p,gl.CLAMP_TO_EDGE));
-    [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER].forEach(p=>gl.texParameteri(gl.TEXTURE_2D,p,gl.LINEAR));
+    const filter = (effType === gl.FLOAT && !this._floatLinear) ? gl.NEAREST : gl.LINEAR;
+    [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER].forEach(p=>gl.texParameteri(gl.TEXTURE_2D,p,filter));
     return t; }
   _drawTo(target){ const gl=this.gl; gl.bindFramebuffer(gl.FRAMEBUFFER,this.fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,target,0);

@@ -99,6 +99,12 @@ for (const [id, key, parse] of sliderMap) {
 }
 const invertEl = document.getElementById("invert");
 if (invertEl) invertEl.onchange = () => { if (leapSrc) leapSrc.opt.invert = invertEl.checked; };
+const ud = document.getElementById("undistort");
+if (ud) ud.onchange = () => { if (leapSrc) { leapSrc.undist.on = ud.checked; leapSrc.undist.map = null; } };
+const k1 = document.getElementById("undistK1");
+if (k1) k1.oninput = () => { if (leapSrc) { leapSrc.undist.k1 = parseFloat(k1.value); leapSrc.undist.map = null; } };
+const k2 = document.getElementById("undistK2");
+if (k2) k2.oninput = () => { if (leapSrc) { leapSrc.undist.k2 = parseFloat(k2.value); leapSrc.undist.map = null; } };
 
 function setSource(name){
   if (current) current.stop();

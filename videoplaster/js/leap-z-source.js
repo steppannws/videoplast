@@ -32,14 +32,14 @@ const URLS = ["ws://localhost:6437/v6.json","ws://localhost:6437/v3.json","ws://
 const DEFAULT_BOX = { center:[0,200,0], size:[300,300,300] };
 
 export class LeapZSource extends TouchSource {
-  constructor() { super(); this.name = "leap-z"; this.cfg = { thresh:40, zoomX:1, zoomZ:1, invertZ:false }; this.active = new Map(); this.nextId = 1; }
+  constructor() { super(); this.name = "leap-z"; this.cfg = { thresh:40, zoomX:1, zoomZ:1, invertZ:false }; this.active = new Map(); this.nextId = 1; this._stopped = false; }
   start() { this._tryNext(0); }
-  stop() { if (this.ws) this.ws.close(); }
+  stop() { this._stopped = true; if (this.ws) this.ws.close(); }
   _tryNext(i) {
-    if (i >= URLS.length) return;
+    if (this._stopped || i >= URLS.length) return;
     const ws = new WebSocket(URLS[i]);
-    const to = setTimeout(() => { try { ws.close(); } catch {} this._tryNext(i + 1); }, 2000);
-    ws.onopen = () => { clearTimeout(to); this.ws = ws; ws.send(JSON.stringify({ focused:true })); ws.send(JSON.stringify({ background:true }));
+    const to = setTimeout(() => { if (this._stopped) { try { ws.close(); } catch {} return; } try { ws.close(); } catch {} this._tryNext(i + 1); }, 2000);
+    ws.onopen = () => { if (this._stopped) { ws.close(); return; } clearTimeout(to); this.ws = ws; ws.send(JSON.stringify({ focused:true })); ws.send(JSON.stringify({ background:true }));
       ws.onmessage = (e) => { try { this._frame(JSON.parse(e.data)); } catch {} }; };
     ws.onerror = () => { clearTimeout(to); this._tryNext(i + 1); };
   }
