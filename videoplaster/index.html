@@ -9,6 +9,16 @@
 <div id="ui">
   <label>FUENTE <select id="sourceSel"><option value="mouse">MOUSE</option>
     <option value="leap-ir">LEAP IR</option><option value="leap-z">LEAP Z</option></select></label>
+  <fieldset id="pins"><legend>ESQUINAS PROYECCIÓN</legend>
+    <label>TL X <input type="range" id="tlx" min="-400" max="1200" step="1" value="0"></label>
+    <label>TL Y <input type="range" id="tly" min="-400" max="900" step="1" value="0"></label>
+    <label>TR X <input type="range" id="trx" min="-400" max="1200" step="1" value="800"></label>
+    <label>TR Y <input type="range" id="try" min="-400" max="900" step="1" value="0"></label>
+    <label>BR X <input type="range" id="brx" min="-400" max="1200" step="1" value="800"></label>
+    <label>BR Y <input type="range" id="bry" min="-400" max="900" step="1" value="500"></label>
+    <label>BL X <input type="range" id="blx" min="-400" max="1200" step="1" value="0"></label>
+    <label>BL Y <input type="range" id="bly" min="-400" max="900" step="1" value="500"></label>
+  </fieldset>
   <span id="status">listo</span>
 </div>
 <script type="module" src="js/app.js"></script>
