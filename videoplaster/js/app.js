@@ -4,6 +4,7 @@ import { WarpGL } from "./warp-gl.js";
 import { MouseTouchSource } from "./touch-source.js";
 import { TouchEmitter } from "./output.js";
 import { LeapImageSource } from "./leap-image-source.js";
+import { LeapZSource } from "./leap-z-source.js";
 
 const glCanvas = document.getElementById("glCanvas");
 const status = document.getElementById("status");
@@ -101,6 +102,7 @@ function setSource(name){
     const saved = JSON.parse(localStorage.getItem("vp_corners") || "null"); if (saved) current.setCorners(saved);
     attachLeapCalib(current);
   }
+  else if (name === "leap-z") { current = new LeapZSource(); }
   if (!current) return;
   wire(current); current.start();
   status.textContent = `fuente: ${name}`;
