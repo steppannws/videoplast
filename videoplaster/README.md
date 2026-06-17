@@ -13,9 +13,10 @@ detected touches, and emits TUIO 1.1 over UDP :3333. The browser does all detect
    (incl. Apple Silicon). Get it from **https://leap2.ultraleap.com/** → select *Leap Motion
    Controller 2* → install. This provides the tracking service **and** the `LeapC` library the
    Python bindings build against. (Without it, only the MOUSE source + TUIO work.)
-2. **Python 3.11** — the system default here is pyenv 3.7, which is too old (`websockets>=12` and the
-   LeapC bindings need 3.8+). `setup.sh` builds a `.venv` with `python3.11`. Install it if missing:
-   `brew install python@3.11`.
+2. **Python 3.12** — the system default here is pyenv 3.7 (too old). 3.12 specifically: the Ultraleap
+   macOS SDK ships a **prebuilt `leapc_cffi` for cpython-312**, so matching 3.12 means the LeapC binding
+   needs no compilation (just `cffi` at runtime, pulled by `setup.sh`). `setup.sh` builds a `.venv` with
+   `python3.12`. Install if missing: `brew install python@3.12`.
 
 ## Setup (once)
 
@@ -27,6 +28,14 @@ cd videoplaster
 `setup.sh` clones `ultraleap/leapc-python-bindings` next to the repo and `pip install -e`'s it into
 `.venv`. If the bindings fail to build, the Ultraleap software is not installed yet — install it,
 then re-run `./setup.sh`.
+
+## Daily start (on-rig testing)
+
+1. Plug in the **Leap Motion Controller 2** (USB). Confirm the Ultraleap control panel detects it.
+2. `./check-leap.sh` → must print **DEVICE(S) CONNECTED**. If it says NO DEVICE, fix USB / control
+   panel before going further (the rest can't work without a connected device).
+3. `./spike.sh` → Phase 0 gate (below).
+4. `./run.sh` → the app.
 
 ## Phase 0 — feasibility GATE
 
@@ -79,7 +88,8 @@ Pick a source from the dropdown. The bridge auto-stops when you Ctrl+C the serve
 
 | Script | Does |
 |--------|------|
-| `./setup.sh` | venv + deps + LeapC bindings (re-runnable) |
+| `./setup.sh` | venv (py3.12) + deps + LeapC bindings (re-runnable) |
+| `./check-leap.sh` | is the service up + a device connected? |
 | `./spike.sh` | Phase 0 gate: live IR image in the browser |
 | `./run.sh`   | bridge + server for the real app |
 
@@ -92,6 +102,14 @@ npm test                                  # 14 JS unit tests (pure logic)
 
 ## Phase 0 result
 
-<!-- fill after running ./spike.sh:
-  images available? (yes/no)   width×height:   fps:   notes:
--->
+- **2026-06-17 (setup, gate pending hardware):** Ultraleap service **v6.2.0** running; LeapC Python
+  bindings working on **Python 3.12** (SDK prebuilt cpython-312 cffi); `set_policy_flags([PolicyFlag.Images])`
+  accepted. BUT **no Leap device was connected** (`get_server_status` → `devices: []`) → no image events
+  yet. GATE PENDING: reconnect the Controller 2, `./check-leap.sh`, then `./spike.sh`.
+- **API facts (now baked into spike + bridge):** `PolicyFlag` is in `leap.enums` (not `leap.*`); image
+  pixels come from the raw cffi struct `event.image[0]._data` — `.properties.{width,height,bpp}`, `.data`
+  (void*), `.offset` — read via `leap.ffi.buffer(cast("uint8_t*", data) + offset, w*h*bpp)`. The Image
+  wrapper itself only exposes `matrix_version`.
+
+<!-- after a successful ./spike.sh, record: width×height, bpp, fps -->
+

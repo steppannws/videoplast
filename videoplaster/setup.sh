@@ -6,9 +6,11 @@ set -euo pipefail
 cd "$(dirname "$0")"                      # videoplaster/
 ROOT="$(cd .. && pwd)"                     # repo root (face-touch/)
 
-PY="${PYTHON:-python3.11}"
+# Python 3.12 — the Ultraleap macOS SDK ships a prebuilt leapc_cffi for cpython-312,
+# so matching 3.12 means the LeapC binding needs NO compilation.
+PY="${PYTHON:-python3.12}"
 if ! command -v "$PY" >/dev/null 2>&1; then
-  echo "ERROR: $PY not found. Install Python 3.11 (brew install python@3.11) or set PYTHON=/path/to/python3.11"
+  echo "ERROR: $PY not found. Install Python 3.12 (brew install python@3.12) or set PYTHON=/path/to/python3.12"
   exit 1
 fi
 
