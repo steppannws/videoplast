@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VIDEOPLASTER 02</title>
 <style>*{box-sizing:border-box;margin:0;padding:0}body{background:#000;font-family:monospace;color:#888}
@@ -7,9 +7,9 @@
 <body>
 <div id="wrap"><canvas id="glCanvas" width="800" height="500"></canvas></div>
 <div id="ui">
-  <label>FUENTE <select id="sourceSel"><option value="mouse">MOUSE</option>
+  <label>SOURCE <select id="sourceSel"><option value="mouse">MOUSE</option>
     <option value="leap-ir">LEAP IR</option><option value="leap-z">LEAP Z</option></select></label>
-  <fieldset id="pins"><legend>ESQUINAS PROYECCIÓN</legend>
+  <fieldset id="pins"><legend>PROJECTION CORNERS</legend>
     <label>TL X <input type="range" id="tlx" min="-400" max="1200" step="1" value="0"></label>
     <label>TL Y <input type="range" id="tly" min="-400" max="900" step="1" value="0"></label>
     <label>TR X <input type="range" id="trx" min="-400" max="1200" step="1" value="800"></label>
@@ -19,26 +19,26 @@
     <label>BL X <input type="range" id="blx" min="-400" max="1200" step="1" value="0"></label>
     <label>BL Y <input type="range" id="bly" min="-400" max="900" step="1" value="500"></label>
   </fieldset>
-  <fieldset id="water"><legend>AGUA</legend>
-    <label>INTENSIDAD <input type="range" id="waterIntensity" min="0" max="2" step="0.01" value="0.5"></label>
-    <label>VISCOSIDAD <input type="range" id="waterDamp" min="0.9" max="0.999" step="0.001" value="0.985"></label>
-    <label>RADIO <input type="range" id="waterRadius" min="0.005" max="0.15" step="0.005" value="0.03"></label>
+  <fieldset id="water"><legend>WATER</legend>
+    <label>INTENSITY <input type="range" id="waterIntensity" min="0" max="2" step="0.01" value="0.5"></label>
+    <label>VISCOSITY <input type="range" id="waterDamp" min="0.9" max="0.999" step="0.001" value="0.985"></label>
+    <label>RADIUS <input type="range" id="waterRadius" min="0.005" max="0.15" step="0.005" value="0.03"></label>
   </fieldset>
-  <fieldset id="calib"><legend>CALIBRACIÓN LEAP IR</legend>
+  <fieldset id="calib"><legend>LEAP IR CALIBRATION</legend>
     <canvas id="irPreview" width="320" height="240"></canvas>
-    <button id="captureBg">CAPTURAR FONDO</button>
-    <button id="calibCorners">CALIBRAR ESQUINAS</button>
-    <label><input type="checkbox" id="invert"> INVERTIR</label>
-    <label>UMBRAL <input type="range" id="threshold" min="0" max="255" step="1" value="40"></label>
-    <label>ÁREA MÍN <input type="range" id="minArea" min="0" max="500" step="1" value="20"></label>
-    <label>ÁREA MÁX <input type="range" id="maxArea" min="100" max="20000" step="100" value="8000"></label>
-    <label>DESENFOQUE <input type="range" id="blur" min="0" max="6" step="1" value="1"></label>
-    <label>EROSIÓN <input type="range" id="erosion" min="0" max="6" step="1" value="2"></label>
-    <label><input type="checkbox" id="undistort"> CORRECCIÓN FISHEYE</label>
+    <button id="captureBg">CAPTURE BACKGROUND</button>
+    <button id="calibCorners">CALIBRATE CORNERS</button>
+    <label><input type="checkbox" id="invert"> INVERT</label>
+    <label>THRESHOLD <input type="range" id="threshold" min="0" max="255" step="1" value="40"></label>
+    <label>MIN AREA <input type="range" id="minArea" min="0" max="500" step="1" value="20"></label>
+    <label>MAX AREA <input type="range" id="maxArea" min="100" max="20000" step="100" value="8000"></label>
+    <label>BLUR <input type="range" id="blur" min="0" max="6" step="1" value="1"></label>
+    <label>EROSION <input type="range" id="erosion" min="0" max="6" step="1" value="2"></label>
+    <label><input type="checkbox" id="undistort"> FISHEYE CORRECTION</label>
     <label>K1 <input type="range" id="undistK1" min="-1" max="1" step="0.01" value="-0.3"></label>
     <label>K2 <input type="range" id="undistK2" min="-0.5" max="0.5" step="0.01" value="0"></label>
   </fieldset>
-  <span id="status">listo</span>
+  <span id="status">ready</span>
 </div>
 <script type="module" src="js/app.js"></script>
 </body></html>

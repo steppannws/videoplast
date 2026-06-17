@@ -73,7 +73,7 @@ Pick a source from the dropdown. The bridge auto-stops when you Ctrl+C the serve
 
 1. **CAPTURAR FONDO** with nothing touching the acrylic (captures the empty IR frame to subtract).
 2. **CALIBRAR ESQUINAS**, then click the 4 acrylic corners in the preview.
-3. Tune **threshold / área / erosión** so a hover does NOT trigger but a touch does.
+3. Tune **threshold / area / erosion** so a hover does NOT trigger but a touch does.
 4. If fisheye distortion at the edges is bad, enable **undistort** and adjust **K1/K2**.
 5. Point a TUIO client (e.g. TUIO Mouse) at `127.0.0.1:3333`.
 

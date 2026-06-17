@@ -71,9 +71,9 @@ function attachLeapCalib(src){
       if (cornerPts.length === 4) {
         src.setCorners(cornerPts);
         localStorage.setItem("vp_corners", JSON.stringify(cornerPts));
-        cornerMode = false; cornerPts = []; status.textContent = "esquinas calibradas";
+        cornerMode = false; cornerPts = []; status.textContent = "corners calibrated";
       } else {
-        status.textContent = `esquina ${cornerPts.length}/4`;
+        status.textContent = `corner ${cornerPts.length}/4`;
       }
     };
   }
@@ -81,9 +81,9 @@ function attachLeapCalib(src){
 
 // calibration buttons (act on the active leap source)
 const captureBgBtn = document.getElementById("captureBg");
-if (captureBgBtn) captureBgBtn.onclick = () => { if (leapSrc) { leapSrc.captureBackground(); status.textContent = "fondo capturado"; } };
+if (captureBgBtn) captureBgBtn.onclick = () => { if (leapSrc) { leapSrc.captureBackground(); status.textContent = "background captured"; } };
 const calibCornersBtn = document.getElementById("calibCorners");
-if (calibCornersBtn) calibCornersBtn.onclick = () => { if (leapSrc) { cornerMode = true; cornerPts = []; status.textContent = "clic 4 esquinas en preview"; } };
+if (calibCornersBtn) calibCornersBtn.onclick = () => { if (leapSrc) { cornerMode = true; cornerPts = []; status.textContent = "click 4 corners in preview"; } };
 
 // blob/detection sliders → leapSrc.opt.* (only effective while leap-ir is active)
 const sliderMap = [
@@ -119,7 +119,7 @@ function setSource(name){
   else if (name === "leap-z") { current = new LeapZSource(); }
   if (!current) return;
   wire(current); current.start();
-  status.textContent = `fuente: ${name}`;
+  status.textContent = `source: ${name}`;
 }
 
 document.getElementById("sourceSel").onchange = (e) => setSource(e.target.value);
