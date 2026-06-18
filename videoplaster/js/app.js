@@ -23,6 +23,7 @@ const mouse = new MouseTouchSource(glCanvas);
 
 const detOpt = { threshold: 40, minArea: 20, maxArea: 8000, blurAmt: 1, erosionAmt: 2, invert: false };
 const undistOpt = { on: false, k1: -0.3, k2: 0 };
+const mirrorOpt = { x: false, y: false };
 
 let current = null;
 let leapSrc = null;
@@ -161,6 +162,7 @@ function setSource(name){
     leapSrc = current;
     Object.assign(leapSrc.opt, detOpt);
     Object.assign(leapSrc.undist, undistOpt); leapSrc.undist.map = null;
+    Object.assign(leapSrc.mirror, mirrorOpt);
     const savedRoi = getSetting("roi"); if (savedRoi) leapSrc.setRoi(savedRoi);
     leapSrc.statusCb = (s) => { status.textContent = "IR: " + s; };
     attachLeapCalib(current);
@@ -208,6 +210,8 @@ for (const [id, key, parse] of DET)
   bindControl(id, (v) => { detOpt[key] = parse(v); if (leapSrc) leapSrc.opt[key] = detOpt[key]; }, v => String(Math.round(v)));
 
 bindControl("invert", (v) => { detOpt.invert = v; if (leapSrc) leapSrc.opt.invert = v; });
+bindControl("mirrorX", (v) => { mirrorOpt.x = v; if (leapSrc) leapSrc.mirror.x = v; });
+bindControl("mirrorY", (v) => { mirrorOpt.y = v; if (leapSrc) leapSrc.mirror.y = v; });
 bindControl("undistort", (v) => { undistOpt.on = v; if (leapSrc) { leapSrc.undist.on = v; leapSrc.undist.map = null; } });
 bindControl("undistK1", (v) => { undistOpt.k1 = parseFloat(v); if (leapSrc) { leapSrc.undist.k1 = undistOpt.k1; leapSrc.undist.map = null; } }, v => (+v).toFixed(2));
 bindControl("undistK2", (v) => { undistOpt.k2 = parseFloat(v); if (leapSrc) { leapSrc.undist.k2 = undistOpt.k2; leapSrc.undist.map = null; } }, v => (+v).toFixed(2));
