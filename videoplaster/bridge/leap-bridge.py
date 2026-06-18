@@ -13,7 +13,7 @@ try:
 except ImportError:
     HAVE_LEAP = False
 
-LATEST_IMAGE = {"buf": None}
+LATEST_IMAGE = {"buf": None, "seq": 0}   # seq increments per frame so each WS client tracks its own progress
 
 def _pack(w, h, buf):
     return struct.pack("<II", w, h) + bytes(buf)[: w * h]
@@ -36,6 +36,7 @@ class _ImageListener(leap.Listener if HAVE_LEAP else object):
         except Exception as ex:
             print("image extract failed:", repr(ex)); return
         LATEST_IMAGE["buf"] = _pack(w, h, buf)
+        LATEST_IMAGE["seq"] += 1
 
 def start_leap():
     if not HAVE_LEAP:
@@ -67,11 +68,16 @@ class TuioOut:
         self._sock.sendto(build_2dcur_bundle(self.cursors, self.fseq), self._addr)
 
 async def push_images(ws):
+    # Broadcast: send the newest frame to THIS client when it changes. Non-destructive —
+    # never null the shared buffer, so multiple clients (LeapImageSource + TouchEmitter)
+    # each receive every frame instead of stealing from one another.
+    last = 0
     while True:
-        if LATEST_IMAGE["buf"] is not None:
+        seq = LATEST_IMAGE["seq"]
+        if seq != last and LATEST_IMAGE["buf"] is not None:
+            last = seq
             try: await ws.send(LATEST_IMAGE["buf"])
             except Exception: return
-            LATEST_IMAGE["buf"] = None
         await asyncio.sleep(1/30)
 
 async def handler(ws, tuio):

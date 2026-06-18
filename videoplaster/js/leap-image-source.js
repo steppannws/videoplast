@@ -22,12 +22,25 @@ export class LeapImageSource extends TouchSource {
     this.roi = { x: 0, y: 0, w: 1, h: 1 }; // normalized capture rectangle; default full frame
     this.tracker = new BlobTracker({ maxDist: 0.08 });
     this.previewCb = null; // optional: (rgba,w,h,blobs)=>void for the calibration preview
+    this.statusCb = null;  // optional: (state)=>void — "connecting"|"connected"|"streaming"|"reconnecting"
+    this._stopped = false; this._gotFrame = false;
   }
-  start() {
+  start() { this._stopped = false; this._gotFrame = false; this._connect(); }
+  _connect() {
+    if (this._stopped) return;
+    if (this.statusCb) this.statusCb("connecting");
     this.ws = new WebSocket(this.url); this.ws.binaryType = "arraybuffer";
+    this.ws.onopen = () => { if (this.statusCb) this.statusCb("connected"); };
     this.ws.onmessage = (e) => this._onFrame(e.data);
+    this.ws.onclose = () => {
+      if (this._stopped) return;
+      if (this.statusCb) this.statusCb("reconnecting");
+      setTimeout(() => this._connect(), 1000);   // bridge down / restarted → keep retrying
+    };
+    this.ws.onerror = () => { try { this.ws.close(); } catch {} };  // onclose then handles retry
   }
-  stop() { if (this.ws) this.ws.close(); }
+  stop() { this._stopped = true; if (this.ws) { try { this.ws.close(); } catch {} } }
+  restart() { this.stop(); this._stopped = false; this._gotFrame = false; this._connect(); }
   captureBackground() { if (this.frame) this.bg = this.frame.slice(); }
   setRoi(roi) { this.roi = roi; }
   _onFrame(buf) {
@@ -40,6 +53,7 @@ export class LeapImageSource extends TouchSource {
       rgba = applyUndist(rgba, this.w, this.h, this.undist.map);
     }
     this.frame = rgba;
+    if (!this._gotFrame) { this._gotFrame = true; if (this.statusCb) this.statusCb("streaming"); }
     if (this.bg && this.bg.length !== rgba.length) this.bg = null;
     const detIn = this.bg ? subtractBackground(rgba, this.bg, this.w * this.h) : rgba;
     const { blobs } = findBlobs({ data: detIn, width: this.w, height: this.h }, this.opt);

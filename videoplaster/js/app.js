@@ -100,6 +100,8 @@ const captureBgBtn = document.getElementById("captureBg");
 if (captureBgBtn) captureBgBtn.onclick = () => { if (leapSrc) { leapSrc.captureBackground(); status.textContent = "background captured"; } };
 const resetZoneBtn = document.getElementById("resetZone");
 if (resetZoneBtn) resetZoneBtn.onclick = () => { if (leapSrc) { leapSrc.setRoi({x:0,y:0,w:1,h:1}); saveSetting("roi", leapSrc.roi); status.textContent = "zone reset"; } };
+const restartIrBtn = document.getElementById("restartIr");
+if (restartIrBtn) restartIrBtn.onclick = () => { if (leapSrc) { leapSrc.restart(); status.textContent = "IR restarting"; } };
 
 // ---- source selection -------------------------------------------------------
 function setSource(name){
@@ -112,6 +114,7 @@ function setSource(name){
     Object.assign(leapSrc.opt, detOpt);
     Object.assign(leapSrc.undist, undistOpt); leapSrc.undist.map = null;
     const savedRoi = getSetting("roi"); if (savedRoi) leapSrc.setRoi(savedRoi);
+    leapSrc.statusCb = (s) => { status.textContent = "IR: " + s; };
     attachLeapCalib(current);
   }
   else if (name === "leap-z") { current = new LeapZSource(); }
