@@ -102,6 +102,10 @@ npm test                                  # 14 JS unit tests (pure logic)
 
 ## Phase 0 result
 
+- **2026-06-18 — GATE PASSED ✅:** Controller 2 (`LE510000200000A8DB…`) connected; `./spike.sh`
+  delivered raw IR images via LeapC. `IMAGE EVENT w=512 h=512 bpp=1 bytes=262144` → `RESULT: IMAGES
+  AVAILABLE`; `spike_frame.pgm` written (P5 512×512, 8-bit grayscale). The IR `LeapImageSource` path
+  is viable — build on it. (fps not yet measured; spike captures a single frame.)
 - **2026-06-17 (setup, gate pending hardware):** Ultraleap service **v6.2.0** running; LeapC Python
   bindings working on **Python 3.12** (SDK prebuilt cpython-312 cffi); `set_policy_flags([PolicyFlag.Images])`
   accepted. BUT **no Leap device was connected** (`get_server_status` → `devices: []`) → no image events
