@@ -13,6 +13,21 @@ export function roiMap(cx, cy, w, h, roi) {
   return { u, v };
 }
 
+// Pure: RGBA copy mirrored horizontally (flipX) and/or vertically (flipY).
+export function flipImage(rgba, w, h, flipX, flipY) {
+  if (!flipX && !flipY) return rgba;
+  const out = new Uint8ClampedArray(rgba.length);
+  for (let y = 0; y < h; y++) {
+    const sy = flipY ? (h - 1 - y) : y;
+    for (let x = 0; x < w; x++) {
+      const sx = flipX ? (w - 1 - x) : x;
+      const di = (y * w + x) * 4, si = (sy * w + sx) * 4;
+      out[di] = rgba[si]; out[di+1] = rgba[si+1]; out[di+2] = rgba[si+2]; out[di+3] = rgba[si+3];
+    }
+  }
+  return out;
+}
+
 export class LeapImageSource extends TouchSource {
   constructor(url = "ws://localhost:7681") {
     super(); this.name = "leap-ir"; this.url = url;
@@ -20,6 +35,7 @@ export class LeapImageSource extends TouchSource {
     this.opt = { threshold: 40, minArea: 20, maxArea: 8000, blurAmt: 1, erosionAmt: 2, invert: false };
     this.undist = { on: false, k1: -0.3, k2: 0, map: null };
     this.roi = { x: 0, y: 0, w: 1, h: 1 }; // normalized capture rectangle; default full frame
+    this.mirror = { x: false, y: false };  // flip IR image (sensor views from behind the acrylic)
     this.tracker = new BlobTracker({ maxDist: 0.08 });
     this.previewCb = null; // optional: (rgba,w,h,blobs)=>void for the calibration preview
     this.statusCb = null;  // optional: (state)=>void — "connecting"|"connected"|"streaming"|"reconnecting"
@@ -48,6 +64,7 @@ export class LeapImageSource extends TouchSource {
     const gray = new Uint8Array(buf, 8, this.w * this.h);
     let rgba = new Uint8ClampedArray(this.w * this.h * 4);
     for (let i = 0; i < this.w * this.h; i++) { rgba[i*4]=rgba[i*4+1]=rgba[i*4+2]=gray[i]; rgba[i*4+3]=255; }
+    if (this.mirror.x || this.mirror.y) rgba = flipImage(rgba, this.w, this.h, this.mirror.x, this.mirror.y);
     if (this.undist.on) {
       if (!this.undist.map) this.undist.map = buildUndistMap(this.w, this.h, this.undist.k1, this.undist.k2);
       rgba = applyUndist(rgba, this.w, this.h, this.undist.map);
