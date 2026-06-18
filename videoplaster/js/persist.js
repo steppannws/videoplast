@@ -17,19 +17,21 @@ export function saveSetting(key, value) {
 }
 
 // Restore a control's saved value (if any), apply(value) to sync live state,
-// and save+apply on every change. Handles range, checkbox, and select.
-export function bindControl(id, apply) {
+// save+apply on change, and (if fmt given + an `id+"v"` element exists) update its readout.
+export function bindControl(id, apply, fmt) {
   const el = document.getElementById(id);
   if (!el) return;
   const isCheck = el.type === "checkbox";
   const isSelect = el.tagName === "SELECT";
   const read = () => (isCheck ? el.checked : el.value);
   const write = (v) => { if (isCheck) el.checked = v; else el.value = v; };
+  const readout = document.getElementById(id + "v");
+  const showVal = (v) => { if (readout && fmt) readout.textContent = fmt(v); };
 
   const saved = getSetting(id);
   if (saved !== undefined) write(saved);
-  apply(read());
+  apply(read()); showVal(read());
 
   const evt = (!isCheck && !isSelect) ? "input" : "change";
-  el.addEventListener(evt, () => { const v = read(); saveSetting(id, v); apply(v); });
+  el.addEventListener(evt, () => { const v = read(); saveSetting(id, v); apply(v); showVal(v); });
 }
