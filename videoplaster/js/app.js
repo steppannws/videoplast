@@ -42,21 +42,23 @@ function setCanvasSize(w, h){
 let cw = glCanvas.width, ch = glCanvas.height;
 
 // ---- projection pin handles (overlay) + drag --------------------------------
-const PIN_HIT = 18;
+const PIN_HIT = 26;
 function drawPins(){
   if (!pinCtx) return;
   pinCtx.clearRect(0, 0, pinCanvas.width, pinCanvas.height);
-  if (bg.hasMedia) return;                       // v11: hide handles over media
+  if (gridOn) drawGrid(pinCtx, pinCanvas.width, pinCanvas.height, 50);
   const pp = warp.cornerPositions();
   const labels = { tl:"TL", tr:"TR", br:"BR", bl:"BL" };
   for (const k of ["tl","tr","br","bl"]){
     const p = pp[k];
+    const sel = (k === selectedPin);
     pinCtx.save();
-    pinCtx.strokeStyle = "rgba(255,255,255,0.65)"; pinCtx.fillStyle = "rgba(0,0,0,0.55)"; pinCtx.lineWidth = 1.5;
-    pinCtx.beginPath(); pinCtx.arc(p.x, p.y, 11, 0, Math.PI*2); pinCtx.fill(); pinCtx.stroke();
-    pinCtx.beginPath(); pinCtx.moveTo(p.x-7, p.y); pinCtx.lineTo(p.x+7, p.y); pinCtx.moveTo(p.x, p.y-7); pinCtx.lineTo(p.x, p.y+7); pinCtx.stroke();
-    pinCtx.fillStyle = "rgba(255,255,255,0.5)"; pinCtx.font = "8px monospace"; pinCtx.textAlign = "center";
-    pinCtx.fillText(labels[k], p.x, p.y-16);
+    pinCtx.strokeStyle = sel ? "rgba(0,255,140,0.95)" : "rgba(255,255,255,0.65)";
+    pinCtx.fillStyle = "rgba(0,0,0,0.55)"; pinCtx.lineWidth = sel ? 2.5 : 1.5;
+    pinCtx.beginPath(); pinCtx.arc(p.x, p.y, 16, 0, Math.PI*2); pinCtx.fill(); pinCtx.stroke();
+    pinCtx.beginPath(); pinCtx.moveTo(p.x-10, p.y); pinCtx.lineTo(p.x+10, p.y); pinCtx.moveTo(p.x, p.y-10); pinCtx.lineTo(p.x, p.y+10); pinCtx.stroke();
+    pinCtx.fillStyle = sel ? "rgba(0,255,140,0.9)" : "rgba(255,255,255,0.6)"; pinCtx.font = "10px monospace"; pinCtx.textAlign = "center";
+    pinCtx.fillText(labels[k], p.x, p.y-22);
     pinCtx.restore();
   }
 }
