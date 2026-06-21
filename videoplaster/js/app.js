@@ -214,6 +214,10 @@ if (getSetting("pinSchema") !== "offset") {
 }
 for (const [k, axis, id] of PIN_IDS) bindControl(id, (v) => { warp.setPinOffset(k, axis, parseFloat(v)); }, v => Math.round(v) + "px");
 
+// Reset all four corner anchors to 0 (identity, no keystone). Updates sliders + warp + persist.
+const resetPinsBtn = document.getElementById("resetPins");
+if (resetPinsBtn) resetPinsBtn.onclick = () => { for (const [k, axis] of PIN_IDS) syncPinSlider(k, axis, 0); status.textContent = "anchors reset"; };
+
 // ---- water controls ---------------------------------------------------------
 bindControl("waterIntensity", v => { water.intensity = parseFloat(v); }, v => (+v).toFixed(2));
 bindControl("waterDamp",      v => { water.damp = parseFloat(v); },      v => (+v).toFixed(3));
