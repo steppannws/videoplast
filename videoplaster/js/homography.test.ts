@@ -1,7 +1,7 @@
-// videoplaster/js/homography.test.js
+// videoplaster/js/homography.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeH, inv3, applyH } from "./homography.js";
+import { computeH, inv3, applyH } from "./homography.ts";
 
 test("identity-ish: unit square maps to itself", () => {
   const sq = [{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}];

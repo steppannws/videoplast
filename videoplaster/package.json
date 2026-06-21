@@ -2,5 +2,16 @@
   "name": "videoplaster",
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "test": "node --test 'js/*.test.js'" }
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 8000",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && node --test --experimental-strip-types 'js/*.test.js' 'js/*.test.ts'"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
 }
