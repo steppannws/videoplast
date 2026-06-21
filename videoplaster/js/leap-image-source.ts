@@ -1,20 +1,21 @@
-// videoplaster/js/leap-image-source.js
+// videoplaster/js/leap-image-source.ts
 import { TouchSource } from "./touch-source.ts";
 import { findBlobs } from "./blobs.ts";
 import { BlobTracker } from "./tracking.ts";
 import { subtractBackground } from "./ir-preprocess.ts";
 import { buildUndistMap, applyUndist } from "./undistort.ts";
+import type { DetOpt, UndistOpt, Roi, MirrorOpt, DetBlob } from "./types.ts";
 
 // Pure: blob center (image px) -> surface UV via an axis-aligned normalized rectangle.
 // roi = {x,y,w,h} in 0..1 of the image. Outside the rect -> u or v outside [0,1].
-export function roiMap(cx, cy, w, h, roi) {
+export function roiMap(cx: number, cy: number, w: number, h: number, roi: Roi): { u: number; v: number } {
   const u = (cx / w - roi.x) / roi.w;
   const v = (cy / h - roi.y) / roi.h;
   return { u, v };
 }
 
 // Pure: RGBA copy mirrored horizontally (flipX) and/or vertically (flipY).
-export function flipImage(rgba, w, h, flipX, flipY) {
+export function flipImage(rgba: Uint8ClampedArray, w: number, h: number, flipX: boolean, flipY: boolean): Uint8ClampedArray {
   if (!flipX && !flipY) return rgba;
   const out = new Uint8ClampedArray(rgba.length);
   for (let y = 0; y < h; y++) {
@@ -29,6 +30,21 @@ export function flipImage(rgba, w, h, flipX, flipY) {
 }
 
 export class LeapImageSource extends TouchSource {
+  url: string;
+  w: number;
+  h: number;
+  frame: Uint8ClampedArray | null;
+  bg: Uint8ClampedArray | null;
+  opt: DetOpt;
+  undist: UndistOpt;
+  roi: Roi;
+  mirror: MirrorOpt;
+  tracker: BlobTracker;
+  previewCb: ((rgba: Uint8ClampedArray, w: number, h: number, blobs: DetBlob[]) => void) | null;
+  statusCb: ((state: string) => void) | null;
+  _stopped: boolean;
+  _gotFrame: boolean;
+  ws?: WebSocket;
   constructor(url = "ws://localhost:7681") {
     super(); this.name = "leap-ir"; this.url = url;
     this.w = 0; this.h = 0; this.frame = null; this.bg = null;
@@ -41,28 +57,28 @@ export class LeapImageSource extends TouchSource {
     this.statusCb = null;  // optional: (state)=>void — "connecting"|"connected"|"streaming"|"reconnecting"
     this._stopped = false; this._gotFrame = false;
   }
-  start() { this._stopped = false; this._gotFrame = false; this._connect(); }
-  _connect() {
+  start(): void { this._stopped = false; this._gotFrame = false; this._connect(); }
+  _connect(): void {
     if (this._stopped) return;
     if (this.statusCb) this.statusCb("connecting");
     this.ws = new WebSocket(this.url); this.ws.binaryType = "arraybuffer";
     this.ws.onopen = () => { if (this.statusCb) this.statusCb("connected"); };
-    this.ws.onmessage = (e) => this._onFrame(e.data);
+    this.ws.onmessage = (e: MessageEvent) => this._onFrame(e.data);
     this.ws.onclose = () => {
       if (this._stopped) return;
       if (this.statusCb) this.statusCb("reconnecting");
       setTimeout(() => this._connect(), 1000);   // bridge down / restarted → keep retrying
     };
-    this.ws.onerror = () => { try { this.ws.close(); } catch {} };  // onclose then handles retry
+    this.ws.onerror = () => { try { this.ws?.close(); } catch {} };  // onclose then handles retry
   }
-  stop() { this._stopped = true; if (this.ws) { try { this.ws.close(); } catch {} } }
-  restart() { this.stop(); this._stopped = false; this._gotFrame = false; this._connect(); }
-  captureBackground() { if (this.frame) this.bg = this.frame.slice(); }
-  setRoi(roi) { this.roi = roi; }
-  _onFrame(buf) {
+  stop(): void { this._stopped = true; if (this.ws) { try { this.ws.close(); } catch {} } }
+  restart(): void { this.stop(); this._stopped = false; this._gotFrame = false; this._connect(); }
+  captureBackground(): void { if (this.frame) this.bg = this.frame.slice(); }
+  setRoi(roi: Roi): void { this.roi = roi; }
+  _onFrame(buf: ArrayBuffer): void {
     const dv = new DataView(buf); this.w = dv.getUint32(0, true); this.h = dv.getUint32(4, true);
     const gray = new Uint8Array(buf, 8, this.w * this.h);
-    let rgba = new Uint8ClampedArray(this.w * this.h * 4);
+    let rgba: Uint8ClampedArray = new Uint8ClampedArray(this.w * this.h * 4);
     for (let i = 0; i < this.w * this.h; i++) { rgba[i*4]=rgba[i*4+1]=rgba[i*4+2]=gray[i]; rgba[i*4+3]=255; }
     if (this.mirror.x || this.mirror.y) rgba = flipImage(rgba, this.w, this.h, this.mirror.x, this.mirror.y);
     if (this.undist.on) {

@@ -1,7 +1,7 @@
-// videoplaster/js/leap-z-source.test.js
+// videoplaster/js/leap-z-source.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractFingerTips, fingerToTouch } from "./leap-z-source.js";
+import { extractFingerTips, fingerToTouch } from "./leap-z-source.ts";
 
 test("extractFingerTips reads Gemini hands[].fingers[].bones[] tips", () => {
   const frame = { hands: [{ type:"left", fingers: [
