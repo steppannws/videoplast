@@ -1,5 +1,5 @@
 // videoplaster/js/leap-z-source.js
-import { TouchSource } from "./touch-source.js";
+import { TouchSource } from "./touch-source.ts";
 
 export function extractFingerTips(frame) {
   const tips = [];

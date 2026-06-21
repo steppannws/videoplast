@@ -1,5 +1,5 @@
 // videoplaster/js/leap-image-source.js
-import { TouchSource } from "./touch-source.js";
+import { TouchSource } from "./touch-source.ts";
 import { findBlobs } from "./blobs.ts";
 import { BlobTracker } from "./tracking.ts";
 import { subtractBackground } from "./ir-preprocess.ts";

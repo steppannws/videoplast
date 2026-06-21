@@ -1,7 +1,7 @@
-// videoplaster/js/touch-source.test.js
+// videoplaster/js/touch-source.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clientToSurface } from "./touch-source.js";
+import { clientToSurface } from "./touch-source.ts";
 
 test("maps client coords inside the canvas rect to [0,1]", () => {
   const rect = { left: 10, top: 20, width: 800, height: 500 };
