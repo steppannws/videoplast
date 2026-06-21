@@ -38,3 +38,33 @@ export function drawGrid(ctx, w, h, spacing) {
   for (const [x, y] of g.corners) ctx.fillRect(x - 4, y - 4, 8, 8);
   ctx.restore();
 }
+
+const ARROW = { ArrowLeft: ["x", -1], ArrowRight: ["x", 1], ArrowUp: ["y", -1], ArrowDown: ["y", 1] };
+
+// Wire global projection keys. App hooks are injected so this stays DOM-light.
+// opts: { panel, body, isEditing(), onNudge(axis,dir,shift), onToggleGrid(),
+//         persist(key,val), initialHidden }
+export function installOverlay(opts) {
+  const { panel, body, isEditing, onNudge, onToggleGrid, persist, initialHidden } = opts;
+  let hidden = !!initialHidden;
+  const applyHidden = () => {
+    panel.classList.toggle("hidden", hidden);
+    body.style.cursor = hidden ? "none" : "";
+  };
+  applyHidden();
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+    else document.exitFullscreen().catch(() => {});
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { hidden = false; applyHidden(); persist("uiHidden", false); return; }
+    if (isEditing()) return;
+    const k = e.key.toLowerCase();
+    if (k === "h") { hidden = !hidden; applyHidden(); persist("uiHidden", hidden); }
+    else if (k === "f") { toggleFullscreen(); }
+    else if (k === "g") { onToggleGrid(); }
+    else if (ARROW[e.key]) { e.preventDefault(); const [axis, dir] = ARROW[e.key]; onNudge(axis, dir, e.shiftKey); }
+  });
+}

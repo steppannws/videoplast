@@ -7,6 +7,7 @@ import { LeapImageSource } from "./leap-image-source.js";
 import { LeapZSource } from "./leap-z-source.js";
 import { BackgroundCanvas } from "./background.js";
 import { bindControl, getSetting, saveSetting } from "./persist.js";
+import { installOverlay, nudgeAxis, drawGrid } from "./ui-overlay.js";
 
 const glCanvas = document.getElementById("glCanvas");
 const pinCanvas = document.getElementById("pinCanvas");
@@ -60,6 +61,8 @@ function drawPins(){
   }
 }
 let pinDrag = null;
+let selectedPin = null;   // corner selected for arrow-key nudging ("tl"|"tr"|"br"|"bl")
+let gridOn = false;       // calibration test grid visible
 function canvasPos(e){
   const r = glCanvas.getBoundingClientRect();
   const sx = glCanvas.width / r.width, sy = glCanvas.height / r.height;
@@ -82,9 +85,8 @@ function syncPinSlider(k, axis, val){
   saveSetting(id, String(val));
 }
 function startPinDrag(e){
-  if (bg.hasMedia) return;
   const p = canvasPos(e), k = nearPin(p.x, p.y);
-  if (k){ pinDrag = k; e.stopImmediatePropagation(); e.preventDefault(); }  // beat MouseTouchSource on glCanvas
+  if (k){ selectedPin = k; pinDrag = k; e.stopImmediatePropagation(); e.preventDefault(); }  // beat MouseTouchSource on glCanvas
 }
 function movePinDrag(e){
   if (!pinDrag) return;
@@ -215,6 +217,27 @@ bindControl("mirrorY", (v) => { mirrorOpt.y = v; if (leapSrc) leapSrc.mirror.y =
 bindControl("undistort", (v) => { undistOpt.on = v; if (leapSrc) { leapSrc.undist.on = v; leapSrc.undist.map = null; } });
 bindControl("undistK1", (v) => { undistOpt.k1 = parseFloat(v); if (leapSrc) { leapSrc.undist.k1 = undistOpt.k1; leapSrc.undist.map = null; } }, v => (+v).toFixed(2));
 bindControl("undistK2", (v) => { undistOpt.k2 = parseFloat(v); if (leapSrc) { leapSrc.undist.k2 = undistOpt.k2; leapSrc.undist.map = null; } }, v => (+v).toFixed(2));
+
+// ---- projection overlay (grid + keyboard) ----------------------------------
+bindControl("grid", (v) => { gridOn = v; });
+
+function nudgeSelected(axis, dir, shift){
+  if (!selectedPin) return;
+  const id = selectedPin + axis;                 // "tl" + "x" => "tlx"
+  const el = document.getElementById(id);
+  const cur = el ? (parseFloat(el.value) || 0) : 0;
+  syncPinSlider(selectedPin, axis, nudgeAxis(cur, dir, shift));
+}
+
+installOverlay({
+  panel: document.getElementById("ui"),
+  body: document.body,
+  isEditing: () => { const a = document.activeElement; return !!a && (a.tagName === "INPUT" || a.tagName === "SELECT"); },
+  onNudge: nudgeSelected,
+  onToggleGrid: () => { const c = document.getElementById("grid"); if (c) c.click(); },
+  persist: saveSetting,
+  initialHidden: getSetting("uiHidden") === true,
+});
 
 // source last so setSource sees everything ready; restores last source or defaults to mouse
 bindControl("sourceSel", (v) => setSource(v));
