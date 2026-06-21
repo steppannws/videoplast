@@ -1,7 +1,7 @@
-// videoplaster/js/warp-gl.test.js
+// videoplaster/js/warp-gl.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cornerPositions } from "./warp-gl.js";
+import { cornerPositions } from "./warp-gl.ts";
 
 const zero = { tl:{x:0,y:0}, tr:{x:0,y:0}, br:{x:0,y:0}, bl:{x:0,y:0} };
 

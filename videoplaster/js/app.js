@@ -1,6 +1,6 @@
 // videoplaster/js/app.js
-import { WaterGL } from "./water-gl.js";
-import { WarpGL } from "./warp-gl.js";
+import { WaterGL } from "./water-gl.ts";
+import { WarpGL } from "./warp-gl.ts";
 import { MouseTouchSource } from "./touch-source.js";
 import { TouchEmitter } from "./output.js";
 import { LeapImageSource } from "./leap-image-source.js";
