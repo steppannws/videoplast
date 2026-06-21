@@ -36,7 +36,7 @@ standing at the projection surface.
 
 | Key | Action |
 |-----|--------|
-| `H` | Hide/show the `#ui` panel. When hidden, also hide the mouse cursor (clean projection). |
+| `H` | Hide/show the `#ui` panel. |
 | `F` | Toggle `document.fullscreenElement` for the whole page. |
 | `Esc` | Force-show the panel (panic key). Browser also natively exits fullscreen on `Esc`; the two pair naturally. |
 
@@ -45,6 +45,9 @@ standing at the projection surface.
   global keys.
 - Panel-hidden and grid-on states persist via `persist.js`. Selected-corner is
   transient (not persisted).
+- **Cursor auto-hide:** the mouse cursor is always visible while moving and
+  auto-hides after 15s of no `mousemove`, reappearing on the next move. This is
+  independent of the `H` panel toggle (`idleMs` default 15000 in `installOverlay`).
 
 ## Calibration aids
 

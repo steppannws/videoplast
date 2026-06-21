@@ -43,15 +43,23 @@ const ARROW = { ArrowLeft: ["x", -1], ArrowRight: ["x", 1], ArrowUp: ["y", -1], 
 
 // Wire global projection keys. App hooks are injected so this stays DOM-light.
 // opts: { panel, body, isEditing(), onNudge(axis,dir,shift), onToggleGrid(),
-//         persist(key,val), initialHidden }
+//         persist(key,val), initialHidden, idleMs }
 export function installOverlay(opts) {
-  const { panel, body, isEditing, onNudge, onToggleGrid, persist, initialHidden } = opts;
+  const { panel, body, isEditing, onNudge, onToggleGrid, persist, initialHidden, idleMs = 15000 } = opts;
   let hidden = !!initialHidden;
-  const applyHidden = () => {
-    panel.classList.toggle("hidden", hidden);
-    body.style.cursor = hidden ? "none" : "";
-  };
+  const applyHidden = () => { panel.classList.toggle("hidden", hidden); };  // cursor handled by idle timer below
   applyHidden();
+
+  // Cursor: always visible while the mouse moves; auto-hide after idleMs of stillness, wake on the next move.
+  let idleTimer = null;
+  const hideCursor = () => { body.style.cursor = "none"; };
+  const wakeCursor = () => {
+    body.style.cursor = "";
+    if (idleTimer !== null) clearTimeout(idleTimer);
+    idleTimer = setTimeout(hideCursor, idleMs);
+  };
+  window.addEventListener("mousemove", wakeCursor);
+  wakeCursor();  // start visible, arm the idle countdown
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
