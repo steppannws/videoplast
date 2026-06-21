@@ -1,7 +1,7 @@
-// videoplaster/js/ui-overlay.test.js
+// videoplaster/js/ui-overlay.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nudgeAxis, gridLines } from "./ui-overlay.js";
+import { nudgeAxis, gridLines } from "./ui-overlay.ts";
 
 test("nudgeAxis 1px and 10px steps", () => {
   assert.equal(nudgeAxis(0, 1, false), 1);

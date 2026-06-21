@@ -2,12 +2,12 @@
 import { WaterGL } from "./water-gl.ts";
 import { WarpGL } from "./warp-gl.ts";
 import { MouseTouchSource } from "./touch-source.js";
-import { TouchEmitter } from "./output.js";
+import { TouchEmitter } from "./output.ts";
 import { LeapImageSource } from "./leap-image-source.js";
 import { LeapZSource } from "./leap-z-source.js";
-import { BackgroundCanvas } from "./background.js";
-import { bindControl, getSetting, saveSetting } from "./persist.js";
-import { installOverlay, nudgeAxis, drawGrid } from "./ui-overlay.js";
+import { BackgroundCanvas } from "./background.ts";
+import { bindControl, getSetting, saveSetting } from "./persist.ts";
+import { installOverlay, nudgeAxis, drawGrid } from "./ui-overlay.ts";
 
 const glCanvas = document.getElementById("glCanvas");
 const pinCanvas = document.getElementById("pinCanvas");
