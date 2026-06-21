@@ -3,11 +3,13 @@
 <title>VIDEOPLASTER 02</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#000;font-family:monospace;color:#888;padding:16px}
-#wrap{position:relative;display:inline-block}
+html,body{height:100%}
+body{background:#000;font-family:monospace;color:#888;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+#wrap{position:relative}
 #glCanvas{display:block;touch-action:none}
 #pinCanvas{position:absolute;left:0;top:0;pointer-events:none}
-#ui{margin-top:12px;display:flex;flex-direction:column}
+#ui{position:fixed;left:0;top:0;width:300px;max-height:100vh;overflow-y:auto;background:rgba(0,0,0,0.78);padding:8px 12px;border-right:.5px solid #222;z-index:10;display:flex;flex-direction:column}
+#ui.hidden{display:none}
 .section{border-top:.5px solid #222;padding:10px 0;display:flex;flex-direction:column;gap:8px}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .slabel{font-size:9px;letter-spacing:3px;color:#555;min-width:84px;text-transform:uppercase}
@@ -25,6 +27,12 @@ select,button,.fbtn{font-family:monospace;font-size:10px;background:#111;color:#
   <canvas id="pinCanvas" width="800" height="500"></canvas>
 </div>
 <div id="ui">
+  <div class="section"><div class="row">
+    <span class="slabel">Projection</span>
+    <label class="ctrl"><input type="checkbox" id="grid"> TEST GRID</label>
+  </div>
+  <div class="row"><span class="val" style="min-width:auto">H hide · F fullscreen · Esc show · click pin + ←↑→↓ nudge (Shift ×10)</span></div></div>
+
   <div class="section"><div class="row">
     <span class="slabel">Canvas</span>
     <div class="ctrl"><label>WIDTH</label><input type="range" id="canvasW" min="200" max="1400" step="10" value="800"><span class="val" id="canvasWv">800px</span></div>
