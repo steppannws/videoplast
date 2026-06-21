@@ -12,10 +12,13 @@ standing at the projection surface.
 
 ## Constraints / decisions
 
-- **Canvas stays slider-sized.** No auto-resize to viewport. Operator sizes the
-  canvas to the projector once via the existing `canvasW`/`canvasH` sliders.
+- **FIT SCREEN (default on).** The canvas tracks the viewport (= the screen in
+  fullscreen) so the projection fills the whole detected screen with no black
+  borders. Re-fits on `resize` and `fullscreenchange`. Turning it off restores
+  manual sizing via the `canvasW`/`canvasH` sliders. (Revision of the original
+  "fixed slider-sized canvas" decision.)
 - **`F` toggles true browser fullscreen** (Fullscreen API on the page) to drop
-  browser chrome. The slider-sized canvas centers on a black background.
+  browser chrome. With FIT SCREEN on, the canvas then fills the physical screen.
 - **Floating, hideable toolbar** instead of the stacked panel below the canvas.
 - Pure UI / overlay / keyboard layer. No change to the WebGL pipeline, water/warp
   shaders, touch sources, or TUIO bridge.
@@ -24,9 +27,10 @@ standing at the projection surface.
 
 ## Layout
 
-- `body`: full-viewport black, no padding.
-- `#wrap` (`glCanvas` + `pinCanvas`): centered in the viewport, kept at the
-  slider-controlled width/height.
+- `body`: full-viewport black, no padding, `overflow:hidden`.
+- `#wrap` (`glCanvas` + `pinCanvas`): with FIT SCREEN on, sized to the viewport
+  (`window.innerWidth`×`innerHeight`), filling the screen edge-to-edge; with it
+  off, centered at the slider-controlled width/height.
 - `#ui`: detached from normal flow into a **floating overlay panel** —
   `position: fixed`, anchored to the left edge, semi-transparent dark background,
   `max-height: 100vh`, `overflow-y: auto`. The projection shows through/behind it.

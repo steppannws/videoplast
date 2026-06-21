@@ -41,6 +41,18 @@ function setCanvasSize(w, h){
 }
 let cw = glCanvas.width, ch = glCanvas.height;
 
+// ---- fit canvas to the whole detected screen --------------------------------
+// When fitScreen is on the canvas tracks the viewport (= the screen in fullscreen),
+// so there are no black borders. Off = manual size via the WIDTH/HEIGHT sliders.
+let fitScreen = true;
+function fitToViewport(){
+  if (!fitScreen) return;
+  cw = window.innerWidth; ch = window.innerHeight;
+  setCanvasSize(cw, ch);
+}
+window.addEventListener("resize", fitToViewport);
+document.addEventListener("fullscreenchange", fitToViewport);
+
 // ---- projection pin handles (overlay) + drag --------------------------------
 const PIN_HIT = 26;
 function drawPins(){
@@ -187,8 +199,9 @@ bindControl("imgScaleY", v => bg.setTransform({ scaleY: parseFloat(v) }), v => (
 bindControl("imgRot",    v => bg.setTransform({ rot: parseFloat(v) }),    v => String(Math.round(v)));
 
 // ---- canvas size controls ---------------------------------------------------
-bindControl("canvasW", v => { cw = parseInt(v,10); setCanvasSize(cw, ch); }, v => Math.round(v) + "px");
-bindControl("canvasH", v => { ch = parseInt(v,10); setCanvasSize(cw, ch); }, v => Math.round(v) + "px");
+// fitScreen overrides the sliders: when on, the canvas fills the viewport instead.
+bindControl("canvasW", v => { if (fitScreen) return; cw = parseInt(v,10); setCanvasSize(cw, ch); }, v => Math.round(v) + "px");
+bindControl("canvasH", v => { if (fitScreen) return; ch = parseInt(v,10); setCanvasSize(cw, ch); }, v => Math.round(v) + "px");
 
 // ---- projection pins (sliders, two-way with drag) ---------------------------
 // Migration: pins changed from absolute destination coords to per-corner offsets
@@ -222,6 +235,11 @@ bindControl("undistK2", (v) => { undistOpt.k2 = parseFloat(v); if (leapSrc) { le
 
 // ---- projection overlay (grid + keyboard) ----------------------------------
 bindControl("grid", (v) => { gridOn = v; });
+bindControl("fitScreen", (v) => {
+  fitScreen = v;
+  if (v) fitToViewport();
+  else { cw = parseInt(document.getElementById("canvasW").value, 10); ch = parseInt(document.getElementById("canvasH").value, 10); setCanvasSize(cw, ch); }
+});
 
 function nudgeSelected(axis, dir, shift){
   if (!selectedPin) return;
