@@ -81,7 +81,7 @@ npm install                 # Install Node dependencies
 ```
 videoplaster/
 ├── index.html              # Main HTML entry point
-├── js/                     # TypeScript source code
+├── src/                        # TypeScript source code
 │   ├── app.ts              # Main app logic, UI controls, event wiring
 │   ├── touch-source.ts     # Abstract TouchSource base class
 │   ├── leap-image-source.ts  # IR blob detection pipeline

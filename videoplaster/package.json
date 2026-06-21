@@ -7,7 +7,7 @@
     "build": "vite build",
     "preview": "vite preview --port 8000",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit && node --test --experimental-strip-types 'js/*.test.js' 'js/*.test.ts'"
+    "test": "tsc --noEmit && node --test --experimental-strip-types 'src/*.test.js' 'src/*.test.ts'"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

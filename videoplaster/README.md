@@ -100,7 +100,7 @@ npm install
 
 ### Directory Layout
 ```
-js/                     # TypeScript source
+src/                    # TypeScript source
 ├── app.ts              # Main app: UI, event wiring, canvas setup
 ├── touch-source.ts     # TouchSource base class + MouseTouchSource
 ├── leap-image-source.ts  # IR pipeline: WebSocket → blobs → touches
