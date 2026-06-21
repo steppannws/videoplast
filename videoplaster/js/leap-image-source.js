@@ -1,9 +1,9 @@
 // videoplaster/js/leap-image-source.js
 import { TouchSource } from "./touch-source.js";
-import { findBlobs } from "./blobs.js";
-import { BlobTracker } from "./tracking.js";
-import { subtractBackground } from "./ir-preprocess.js";
-import { buildUndistMap, applyUndist } from "./undistort.js";
+import { findBlobs } from "./blobs.ts";
+import { BlobTracker } from "./tracking.ts";
+import { subtractBackground } from "./ir-preprocess.ts";
+import { buildUndistMap, applyUndist } from "./undistort.ts";
 
 // Pure: blob center (image px) -> surface UV via an axis-aligned normalized rectangle.
 // roi = {x,y,w,h} in 0..1 of the image. Outside the rect -> u or v outside [0,1].

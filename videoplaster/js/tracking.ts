@@ -1,9 +1,16 @@
-// videoplaster/js/tracking.js
+// videoplaster/js/tracking.ts
 // Greedy nearest-neighbour matching of current blobs to active tracks.
+import type { TouchEv } from "./types.ts";
+
+interface TrackPt { x: number; y: number; strength: number; }
+
 export class BlobTracker {
-  constructor({ maxDist = 0.08 } = {}) { this.maxDist = maxDist; this.tracks = new Map(); this.nextId = 1; }
-  update(blobs) {
-    const events = [];
+  maxDist: number;
+  tracks: Map<number, { x: number; y: number }>;
+  nextId: number;
+  constructor({ maxDist = 0.08 }: { maxDist?: number } = {}) { this.maxDist = maxDist; this.tracks = new Map(); this.nextId = 1; }
+  update(blobs: TrackPt[]): TouchEv[] {
+    const events: TouchEv[] = [];
     const unmatched = new Set(this.tracks.keys());
     const used = new Array(blobs.length).fill(false);
     // match each existing track to the closest unused blob within maxDist
@@ -22,7 +29,8 @@ export class BlobTracker {
     }
     // leftover tracks → up
     for (const id of unmatched) {
-      const tk = this.tracks.get(id); this.tracks.delete(id);
+      const tk = this.tracks.get(id); if (!tk) continue;
+      this.tracks.delete(id);
       events.push({ id, x: tk.x, y: tk.y, z: 0, strength: 0, state: "up" });
     }
     // leftover blobs → new down

@@ -1,7 +1,7 @@
-// videoplaster/js/tracking.test.js
+// videoplaster/js/tracking.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BlobTracker } from "./tracking.js";
+import { BlobTracker } from "./tracking.ts";
 
 test("new blob -> down, moved blob -> move with same id, gone -> up", () => {
   const tr = new BlobTracker({ maxDist: 0.1 });

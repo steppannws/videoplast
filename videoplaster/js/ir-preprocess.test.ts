@@ -1,7 +1,7 @@
-// videoplaster/js/ir-preprocess.test.js
+// videoplaster/js/ir-preprocess.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { subtractBackground } from "./ir-preprocess.js";
+import { subtractBackground } from "./ir-preprocess.ts";
 
 test("subtracts a static background, leaving only new bright pixels", () => {
   const w=4,h=1; const bg=new Uint8ClampedArray([100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255]);

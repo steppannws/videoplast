@@ -1,10 +1,10 @@
-// videoplaster/js/blobs.test.js
+// videoplaster/js/blobs.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { findBlobs } from "./blobs.js";
+import { findBlobs } from "./blobs.ts";
 
 // helper: build a grayscale "frame" (RGBA) with bright squares on a dark field
-function frame(w, h, squares) {
+function frame(w: number, h: number, squares: { x: number; y: number; s: number; v: number }[]) {
   const data = new Uint8ClampedArray(w * h * 4);
   for (const { x, y, s, v } of squares)
     for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
