@@ -20,3 +20,25 @@ export interface TouchEv {
   id: number; x: number; y: number; z: number;
   strength: number; state: TouchState;
 }
+
+// --- Effect system ---------------------------------------------------------
+// One touch-reactive fullscreen GL effect. Sits between the background media and
+// the corner-pin warp: takes touch events + a background texture, advances its
+// own simulation, and renders a scene texture the warp consumes.
+
+// Static metadata for one tunable parameter; drives the dynamically-built UI.
+export interface EffectParam {
+  key: string;        // param id; persisted as fx.<effectId>.<key>
+  label: string;      // short uppercase UI label
+  min: number; max: number; step: number;
+  default: number;
+}
+
+export interface Effect {
+  addTouch(ev: TouchEv): void;            // full event (id/x/y/strength/state)
+  step(): void;                           // advance the simulation one frame
+  setBackground(src: TexImageSource): void;
+  renderToTexture(): WebGLTexture;        // scene texture for the warp
+  setParam(key: string, value: number): void;
+  readonly params: readonly EffectParam[];
+}

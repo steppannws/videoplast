@@ -46,12 +46,19 @@ const ARROW: Record<string, [Axis, -1 | 1]> = {
   ArrowLeft: ["x", -1], ArrowRight: ["x", 1], ArrowUp: ["y", -1], ArrowDown: ["y", 1],
 };
 
+// Pure: map a keydown key to a zero-based effect index for keys "1".."9", else null.
+export function effectKeyIndex(key: string): number | null {
+  if (key.length === 1 && key >= "1" && key <= "9") return key.charCodeAt(0) - 49;
+  return null;
+}
+
 export interface InstallOverlayOpts {
   panel: HTMLElement;
   body: HTMLElement;
   isEditing: () => boolean;
   onNudge: (axis: Axis, dir: -1 | 1, shift: boolean) => void;
   onToggleGrid: () => void;
+  onSelectEffect?: (index: number) => void;
   persist: (key: string, value: unknown) => void;
   initialHidden: boolean;
   idleMs?: number;
@@ -59,7 +66,7 @@ export interface InstallOverlayOpts {
 
 // Wire global projection keys. App hooks are injected so this stays DOM-light.
 export function installOverlay(opts: InstallOverlayOpts): void {
-  const { panel, body, isEditing, onNudge, onToggleGrid, persist, initialHidden, idleMs = 15000 } = opts;
+  const { panel, body, isEditing, onNudge, onToggleGrid, onSelectEffect, persist, initialHidden, idleMs = 15000 } = opts;
   let hidden = !!initialHidden;
   const applyHidden = () => { panel.classList.toggle("hidden", hidden); };  // cursor handled by idle timer below
   applyHidden();
@@ -83,6 +90,8 @@ export function installOverlay(opts: InstallOverlayOpts): void {
   window.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key === "Escape") { hidden = false; applyHidden(); persist("uiHidden", false); return; }
     if (isEditing()) return;
+    const fxIdx = effectKeyIndex(e.key);
+    if (fxIdx !== null) { if (onSelectEffect) onSelectEffect(fxIdx); return; }
     const k = e.key.toLowerCase();
     if (k === "h") { hidden = !hidden; applyHidden(); persist("uiHidden", hidden); }
     else if (k === "f") { toggleFullscreen(); }

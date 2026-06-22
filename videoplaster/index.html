@@ -55,12 +55,14 @@ select,button,.fbtn{font-family:monospace;font-size:10px;background:#111;color:#
     <div class="ctrl"><label>ROT</label><input type="range" id="imgRot" min="-180" max="180" step="1" value="0"><span class="val" id="imgRotv">0</span></div>
   </div></div>
 
-  <div class="section"><div class="row">
-    <span class="slabel">Water</span>
-    <div class="ctrl"><label>INTENSITY</label><input type="range" id="waterIntensity" min="0" max="2" step="0.01" value="0.5"><span class="val" id="waterIntensityv">0.50</span></div>
-    <div class="ctrl"><label>RADIUS</label><input type="range" id="waterRadius" min="0.005" max="0.15" step="0.005" value="0.03"><span class="val" id="waterRadiusv">0.030</span></div>
-    <div class="ctrl"><label>VISCOSITY</label><input type="range" id="waterDamp" min="0.9" max="0.999" step="0.001" value="0.985"><span class="val" id="waterDampv">0.985</span></div>
-  </div></div>
+  <div class="section">
+    <div class="row">
+      <span class="slabel">Effect</span>
+      <select id="effectSel"></select>
+      <span class="val" style="min-width:auto">keys 1-6</span>
+    </div>
+    <div class="row" id="effectParams"></div>
+  </div>
 
   <div class="section">
     <div class="row"><span class="slabel">Pin TL</span>

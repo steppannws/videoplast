@@ -1,4 +1,4 @@
-import { WaterGL } from "./water-gl.ts";
+import { EFFECTS, DEFAULT_EFFECT, effectById } from "./effects.ts";
 import { WarpGL } from "./warp-gl.ts";
 import { MouseTouchSource } from "./touch-source.ts";
 import { TouchEmitter } from "./output.ts";
@@ -7,7 +7,7 @@ import { LeapZSource } from "./leap-z-source.ts";
 import { BackgroundCanvas } from "./background.ts";
 import { bindControl, getSetting, saveSetting } from "./persist.ts";
 import { installOverlay, nudgeAxis, drawGrid } from "./ui-overlay.ts";
-import type { TouchEv } from "./types.ts";
+import type { TouchEv, Effect } from "./types.ts";
 
 const glCanvas = document.getElementById("glCanvas") as HTMLCanvasElement;
 const pinCanvas = document.getElementById("pinCanvas") as HTMLCanvasElement | null;
@@ -16,8 +16,61 @@ const status = document.getElementById("status") as HTMLElement;
 console.log("app boot");
 
 const gl = glCanvas.getContext("webgl") as WebGLRenderingContext;
-const water = new WaterGL(gl);
 const bg = new BackgroundCanvas(glCanvas.width, glCanvas.height);
+
+// --- Effect selection ------------------------------------------------------
+const fxCache = new Map<string, Effect>();
+let active!: Effect;
+
+function getEffect(id: string): Effect {
+  let fx = fxCache.get(id);
+  if (!fx) {
+    const entry = effectById(id);
+    if (!entry) throw new Error("unknown effect: " + id);
+    fx = entry.make(gl);
+    fxCache.set(id, fx);
+  }
+  return fx;
+}
+
+const fxDecimals = (step: number): number => (step >= 1 ? 0 : step >= 0.1 ? 1 : step >= 0.01 ? 2 : 3);
+
+// Build the dynamic param sliders for the active effect. Element ids are
+// `fx.<id>.<key>` so bindControl persists each under that key automatically.
+function buildEffectParams(fx: Effect, id: string): void {
+  const host = document.getElementById("effectParams");
+  if (!host) return;
+  host.innerHTML = "";
+  for (const p of fx.params) {
+    const elemId = `fx.${id}.${p.key}`;
+    const ctrl = document.createElement("div");
+    ctrl.className = "ctrl";
+    const label = document.createElement("label");
+    label.textContent = p.label;
+    const input = document.createElement("input");
+    input.type = "range"; input.id = elemId;
+    input.min = String(p.min); input.max = String(p.max); input.step = String(p.step);
+    input.value = String(p.default);
+    const val = document.createElement("span");
+    val.className = "val"; val.id = elemId + "v";
+    ctrl.append(label, input, val);
+    host.appendChild(ctrl);
+    const d = fxDecimals(p.step);
+    bindControl(elemId, (v) => fx.setParam(p.key, parseFloat(String(v))), (v) => (+parseFloat(String(v))).toFixed(d));
+  }
+}
+
+function setEffect(id: string): void {
+  const entry = effectById(id);
+  if (!entry) return;
+  try { active = getEffect(id); }
+  catch (e) { status.textContent = "effect failed: " + (e as Error).message; return; }
+  saveSetting("fx.active", id);
+  const sel = document.getElementById("effectSel") as HTMLSelectElement | null;
+  if (sel && sel.value !== id) sel.value = id;
+  buildEffectParams(active, id);
+  status.textContent = "effect: " + entry.label;
+}
 const warp = new WarpGL(gl, glCanvas.width, glCanvas.height);
 const emitter = new TouchEmitter();
 const mouse = new MouseTouchSource(glCanvas);
@@ -31,7 +84,7 @@ let leapSrc: LeapImageSource | null = null;
 
 function wire(src: MouseTouchSource | LeapImageSource | LeapZSource) {
   src.onTouch((ev: TouchEv) => {
-    if (ev.state !== "up") water.addDrop(ev.x, ev.y, ev.strength);
+    active.addTouch(ev);
     emitter.send(ev);
   });
 }
@@ -416,16 +469,6 @@ if (resetPinsBtn)
     status.textContent = "anchors reset";
   };
 
-bindControl("waterIntensity", (v) => {
-  water.intensity = parseFloat(String(v));
-}, (v) => (+parseFloat(String(v))).toFixed(2));
-bindControl("waterDamp", (v) => {
-  water.damp = parseFloat(String(v));
-}, (v) => (+parseFloat(String(v))).toFixed(3));
-bindControl("waterRadius", (v) => {
-  water.radius = parseFloat(String(v));
-}, (v) => (+parseFloat(String(v))).toFixed(3));
-
 const DET: Array<[string, string, (v: string) => number]> = [
   ["threshold", "threshold", (v) => parseFloat(v)],
   ["minArea", "minArea", (v) => parseFloat(v)],
@@ -526,9 +569,23 @@ installOverlay({
     const c = document.getElementById("grid") as HTMLInputElement | null;
     if (c) c.click();
   },
+  onSelectEffect: (index) => {
+    const e = EFFECTS[index];
+    if (e) setEffect(e.id);
+  },
   persist: saveSetting,
   initialHidden: getSetting("uiHidden") === true,
 });
+
+// Effect dropdown + boot to the saved (or default) effect. Must run before the
+// render loop and before a source can emit touches, so `active` is assigned.
+const effectSel = document.getElementById("effectSel") as HTMLSelectElement | null;
+if (effectSel) {
+  effectSel.innerHTML = EFFECTS.map((e) => `<option value="${e.id}">${e.label}</option>`).join("");
+  effectSel.addEventListener("change", () => setEffect(effectSel.value));
+}
+const savedFx = getSetting("fx.active");
+setEffect(typeof savedFx === "string" && effectById(savedFx) ? savedFx : DEFAULT_EFFECT);
 
 bindControl("sourceSel", (v) => setSource(String(v)));
 
@@ -536,9 +593,9 @@ status.textContent = `canvas ${glCanvas.width}x${glCanvas.height} ready`;
 
 (function loop() {
   bg.draw();
-  water.setBackground(bg.canvas);
-  water.step();
-  const tex = water.renderToTexture();
+  active.setBackground(bg.canvas);
+  active.step();
+  const tex = active.renderToTexture();
   warp.draw(tex);
   drawPins();
   requestAnimationFrame(loop);
