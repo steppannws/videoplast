@@ -164,17 +164,22 @@ class PsEyeDevice(IrDevice):
 
         def run():
             while device._running:
-                frame, _ts = device._cam.read()
-                w, h, gray = frame_to_gray(frame)
-                if device._on_frame:
-                    device._on_frame(w, h, gray)
+                try:
+                    frame, _ts = device._cam.read()
+                    w, h, gray = frame_to_gray(frame)
+                except Exception:
+                    break
+                cb = device._on_frame
+                if cb:
+                    cb(w, h, gray)
 
         self._thread = threading.Thread(target=run, daemon=True)
         self._thread.start()
     def stop(self) -> None:
         self._running = False
+        self._on_frame = None
         if self._thread is not None:
-            self._thread.join(timeout=0.5)
+            self._thread.join(timeout=1.0)
             self._thread = None
         if self._cam is not None:
             try: self._cam.end()

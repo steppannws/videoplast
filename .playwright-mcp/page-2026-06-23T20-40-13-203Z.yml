@@ -1,0 +1,161 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: Projection
+      - generic [ref=e8]:
+        - checkbox "FIT SCREEN" [checked] [ref=e9]
+        - text: FIT SCREEN
+      - generic [ref=e10]:
+        - checkbox "TEST GRID" [ref=e11]
+        - text: TEST GRID
+      - button "RESET ANCHORS" [ref=e12] [cursor=pointer]
+    - generic [ref=e14]: H hide · F fullscreen · Esc show · click pin + ←↑→↓ nudge (Shift ×10)
+  - generic [ref=e16]:
+    - generic [ref=e17]: Canvas
+    - generic [ref=e18]:
+      - generic [ref=e19]: WIDTH
+      - slider [ref=e20] [cursor=pointer]: "1100"
+      - generic [ref=e21]: 1100px
+    - generic [ref=e22]:
+      - generic [ref=e23]: HEIGHT
+      - slider [ref=e24] [cursor=pointer]: "600"
+      - generic [ref=e25]: 600px
+  - generic [ref=e27]:
+    - generic [ref=e28]: Source
+    - combobox [ref=e29] [cursor=pointer]:
+      - option "MOUSE" [selected]
+      - option "LEAP IR"
+      - option "PS EYE"
+      - option "IR CAMERA"
+      - option "LEAP Z"
+  - generic [ref=e31]:
+    - generic [ref=e32]: Image
+    - generic [ref=e33] [cursor=pointer]: LOAD
+    - button "CLEAR" [ref=e34] [cursor=pointer]
+    - generic [ref=e35]:
+      - generic [ref=e36]: SCALE X
+      - slider [ref=e37] [cursor=pointer]: "1"
+      - generic [ref=e38]: 1.0x
+    - generic [ref=e39]:
+      - generic [ref=e40]: SCALE Y
+      - slider [ref=e41] [cursor=pointer]: "1"
+      - generic [ref=e42]: 1.0x
+    - generic [ref=e43]:
+      - generic [ref=e44]: ROT
+      - slider [ref=e45] [cursor=pointer]: "0"
+      - generic [ref=e46]: "0"
+  - generic [ref=e47]:
+    - generic [ref=e48]:
+      - generic [ref=e49]: Effect
+      - combobox [ref=e50] [cursor=pointer]:
+        - option "WATER"
+        - option "INK BLOOM"
+        - option "EROSION REVEAL"
+        - option "THERMAL HEAT" [selected]
+        - option "SHATTER GLASS"
+        - option "PARTICLE CHAOS"
+      - generic [ref=e51]: keys 1-6
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - generic [ref=e54]: HEAT
+        - slider [ref=e55] [cursor=pointer]: "2.65"
+        - generic [ref=e56]: "2.65"
+      - generic [ref=e57]:
+        - generic [ref=e58]: SPREAD
+        - slider [ref=e59] [cursor=pointer]: "0"
+        - generic [ref=e60]: "0.00"
+      - generic [ref=e61]:
+        - generic [ref=e62]: COOL
+        - slider [ref=e63] [cursor=pointer]: "0.97"
+        - generic [ref=e64]: "0.970"
+      - generic [ref=e65]:
+        - generic [ref=e66]: DISTORT
+        - slider [ref=e67] [cursor=pointer]: "0.02"
+        - generic [ref=e68]: "0.020"
+  - generic [ref=e69]:
+    - generic [ref=e70]:
+      - generic [ref=e71]: Pin TL
+      - generic [ref=e72]:
+        - generic [ref=e73]: X
+        - slider [ref=e74] [cursor=pointer]: "0"
+        - generic [ref=e75]: 0px
+      - generic [ref=e76]:
+        - generic [ref=e77]: "Y"
+        - slider [ref=e78] [cursor=pointer]: "0"
+        - generic [ref=e79]: 0px
+    - generic [ref=e80]:
+      - generic [ref=e81]: Pin TR
+      - generic [ref=e82]:
+        - generic [ref=e83]: X
+        - slider [ref=e84] [cursor=pointer]: "0"
+        - generic [ref=e85]: 0px
+      - generic [ref=e86]:
+        - generic [ref=e87]: "Y"
+        - slider [ref=e88] [cursor=pointer]: "0"
+        - generic [ref=e89]: 0px
+    - generic [ref=e90]:
+      - generic [ref=e91]: Pin BR
+      - generic [ref=e92]:
+        - generic [ref=e93]: X
+        - slider [ref=e94] [cursor=pointer]: "0"
+        - generic [ref=e95]: 0px
+      - generic [ref=e96]:
+        - generic [ref=e97]: "Y"
+        - slider [ref=e98] [cursor=pointer]: "0"
+        - generic [ref=e99]: 0px
+    - generic [ref=e100]:
+      - generic [ref=e101]: Pin BL
+      - generic [ref=e102]:
+        - generic [ref=e103]: X
+        - slider [ref=e104] [cursor=pointer]: "0"
+        - generic [ref=e105]: 0px
+      - generic [ref=e106]:
+        - generic [ref=e107]: "Y"
+        - slider [ref=e108] [cursor=pointer]: "0"
+        - generic [ref=e109]: 0px
+  - generic [ref=e111]:
+    - generic [ref=e112]: IR DETECT
+    - button "CAPTURE BG" [ref=e113] [cursor=pointer]
+    - button "RESET ZONE" [ref=e114] [cursor=pointer]
+    - button "RESTART IR" [ref=e115] [cursor=pointer]
+    - generic [ref=e116]:
+      - checkbox "INVERT" [ref=e117]
+      - text: INVERT
+    - generic [ref=e118]:
+      - checkbox "MIRROR X" [checked] [ref=e119]
+      - text: MIRROR X
+    - generic [ref=e120]:
+      - checkbox "MIRROR Y" [ref=e121]
+      - text: MIRROR Y
+    - generic [ref=e122]:
+      - generic [ref=e123]: THRESHOLD
+      - slider [ref=e124] [cursor=pointer]: "7"
+      - generic [ref=e125]: "7"
+    - generic [ref=e126]:
+      - generic [ref=e127]: MIN AREA
+      - slider [ref=e128] [cursor=pointer]: "20"
+      - generic [ref=e129]: "20"
+    - generic [ref=e130]:
+      - generic [ref=e131]: MAX AREA
+      - slider [ref=e132] [cursor=pointer]: "8000"
+      - generic [ref=e133]: "8000"
+    - generic [ref=e134]:
+      - generic [ref=e135]: BLUR
+      - slider [ref=e136] [cursor=pointer]: "1"
+      - generic [ref=e137]: "1"
+    - generic [ref=e138]:
+      - generic [ref=e139]: EROSION
+      - slider [ref=e140] [cursor=pointer]: "4"
+      - generic [ref=e141]: "4"
+    - generic [ref=e142]:
+      - checkbox "FISHEYE" [checked] [ref=e143]
+      - text: FISHEYE
+    - generic [ref=e144]:
+      - generic [ref=e145]: K1
+      - slider [ref=e146] [cursor=pointer]: "-0.3"
+      - generic [ref=e147]: "-0.30"
+    - generic [ref=e148]:
+      - generic [ref=e149]: K2
+      - slider [ref=e150] [cursor=pointer]: "0"
+      - generic [ref=e151]: "0.00"
+  - generic [ref=e155]: canvas 1512x806 ready
