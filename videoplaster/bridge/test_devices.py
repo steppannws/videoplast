@@ -1,4 +1,5 @@
 import struct
+import pytest
 from ir_device import pack_frame, classify_message, IrDevice, FakeDevice, DeviceManager
 
 def test_pack_frame_header_and_truncation():
@@ -31,3 +32,12 @@ def test_device_manager_selects_and_swaps():
     mgr.select("none")        # stop all
     assert fake_b.started is False
     assert mgr.active_name == "none"
+
+def test_frame_to_gray_when_numpy_present():
+    np = pytest.importorskip("numpy")
+    from ir_device import frame_to_gray
+    frame = np.zeros((2, 3, 3), dtype=np.uint8)
+    frame[:, :, 1] = 255  # all green
+    w, h, gray = frame_to_gray(frame)
+    assert (w, h) == (3, 2)
+    assert set(gray) == {149}  # 255*587//1000 = 149

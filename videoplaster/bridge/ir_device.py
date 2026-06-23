@@ -121,3 +121,62 @@ class LeapDevice(IrDevice):
         if self._thread is not None:
             self._thread.join(timeout=0.5)
             self._thread = None
+
+
+try:
+    import numpy as _np
+    import pseyepy as _pseyepy
+    _HAVE_PSEYE = True
+except ImportError:
+    _HAVE_PSEYE = False
+
+
+def frame_to_gray(frame):
+    """An (H,W,3) or (H,W) array -> (w, h, gray_bytes). Requires numpy at runtime."""
+    arr = _np.asarray(frame)
+    if arr.ndim == 3:
+        gray = (arr[:, :, 0].astype(_np.uint32) * 299 +
+                arr[:, :, 1].astype(_np.uint32) * 587 +
+                arr[:, :, 2].astype(_np.uint32) * 114) // 1000
+        gray = gray.astype(_np.uint8)
+    else:
+        gray = arr.astype(_np.uint8)
+    h, w = gray.shape[0], gray.shape[1]
+    return w, h, gray.tobytes()
+
+
+class PsEyeDevice(IrDevice):
+    """PlayStation Eye (IR-modded) via pseyepy/libusb."""
+    def __init__(self, fps: int = 60) -> None:
+        self._fps = fps
+        self._on_frame: Optional[OnFrame] = None
+        self._cam = None
+        self._thread: Optional[threading.Thread] = None
+        self._running = False
+    def start(self, on_frame: OnFrame) -> None:
+        if not _HAVE_PSEYE:
+            print("[pseye] pseyepy/numpy not installed — no frames")
+            return
+        self._on_frame = on_frame
+        self._running = True
+        self._cam = _pseyepy.Camera(fps=self._fps, resolution=_pseyepy.Camera.RES_LARGE)
+        device = self
+
+        def run():
+            while device._running:
+                frame, _ts = device._cam.read()
+                w, h, gray = frame_to_gray(frame)
+                if device._on_frame:
+                    device._on_frame(w, h, gray)
+
+        self._thread = threading.Thread(target=run, daemon=True)
+        self._thread.start()
+    def stop(self) -> None:
+        self._running = False
+        if self._thread is not None:
+            self._thread.join(timeout=0.5)
+            self._thread = None
+        if self._cam is not None:
+            try: self._cam.end()
+            except Exception: pass
+            self._cam = None
