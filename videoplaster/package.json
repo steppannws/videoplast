@@ -7,9 +7,14 @@
     "build": "vite build",
     "preview": "vite preview --port 8000",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit && node --test --experimental-strip-types 'src/*.test.js' 'src/*.test.ts'"
+    "test": "tsc --noEmit && node --test --experimental-strip-types 'src/*.test.js' 'src/*.test.ts'",
+    "build-bridge": "bash scripts/build-bridge.sh",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.3",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0",
     "vite": "^6.0.0"

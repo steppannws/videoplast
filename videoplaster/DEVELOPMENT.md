@@ -292,6 +292,55 @@ Control values (sliders, checkboxes) and calibration ROI are saved to `localStor
 
 ---
 
+## Standalone macOS App (Tauri)
+
+The app can ship as a double-clickable `.app` that bundles the Leap bridge and runs
+the existing WebGL frontend in a fullscreen WKWebView. The frontend is unchanged —
+it still talks to the bridge over `ws://localhost:7681`; Tauri only owns the window
+and the bridge process lifecycle. See the design spec:
+`docs/superpowers/specs/2026-06-21-tauri-standalone-app-design.md`.
+
+### Layout
+- `src-tauri/` — Tauri shell: `tauri.conf.json`, `src/lib.rs` (spawns/kills the
+  bridge sidecar, single-instance, fullscreen kiosk), `capabilities/`, `entitlements.plist`, `icons/`.
+- `src-tauri/binaries/videoplaster-bridge-<triple>` — the frozen bridge sidecar (gitignored).
+- `scripts/build-bridge.sh` — freezes `bridge/leap-bridge.py` with PyInstaller.
+
+### Prerequisites
+- Rust toolchain (`cargo`), Node, and the project Python venv (`.venv`) with the
+  Leap bindings + `websockets`.
+- **Ultraleap tracking runtime** installed on the rig so `libLeapC.dylib` resolves.
+  Mouse source + all effects work without it; only the Leap-IR source needs it.
+
+### Dev
+```bash
+npm run tauri:dev        # vite + webview; backend spawns the bridge sidecar
+```
+A no-op bridge stub at `src-tauri/binaries/...` lets `tauri:dev` run before the real
+bridge is frozen (mouse source + effects work; no Leap/TUIO).
+
+### Freeze the bridge sidecar
+```bash
+npm run build-bridge     # PyInstaller -> src-tauri/binaries/videoplaster-bridge-<triple>
+```
+If `--collect-all leap` does not embed `libLeapC.dylib`, copy it next to the binary
+and fix the loader path (`install_name_tool`/rpath).
+
+### Build the app
+```bash
+npm run tauri:build      # vite build + .app + .dmg
+```
+Targets the host arch (Apple Silicon → `aarch64-apple-darwin`). An Intel/universal
+build is a follow-up (separate arch bridge + target).
+
+### Sign + notarize (handoff to other Macs)
+Set the Developer ID Application identity in `tauri.conf.json` (`bundle.macOS`) and
+export `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID`; `tauri build` then signs
+(hardened runtime + `entitlements.plist`, including the nested sidecar + dylib) and
+notarizes. Without a cert the build runs locally but Gatekeeper blocks it elsewhere.
+
+---
+
 ## License & Credits
 
 Originally developed for a rear-projection touch-responsive installation using Leap Motion Controller 2 as an IR-based finger detection sensor. The water effect and keystone correction enable flexible on-site calibration without hardware tweaking.

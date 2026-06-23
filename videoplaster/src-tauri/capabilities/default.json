@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Core capability + permission to spawn the Leap bridge sidecar.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "binaries/videoplaster-bridge",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    }
+  ]
+}
