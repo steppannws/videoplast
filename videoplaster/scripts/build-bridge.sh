@@ -28,11 +28,16 @@ python -m PyInstaller --onefile --name videoplaster-bridge \
   --workpath build/pyi --specpath build/pyi \
   --paths bridge \
   --collect-all leap \
+  --collect-all pseyepy \
+  --collect-all numpy \
   --collect-submodules websockets \
   bridge/leap-bridge.py
 
 mv -f "$OUT/videoplaster-bridge" "$OUT/videoplaster-bridge-$TRIPLE"
 echo "built $OUT/videoplaster-bridge-$TRIPLE"
+
+# pseyepy uses libusb via cffi. If PyInstaller does not embed libusb-1.0.dylib,
+# copy it next to the binary:  cp "$(brew --prefix libusb)/lib/libusb-1.0.0.dylib" "$OUT/"
 
 # NOTE: if libLeapC.dylib is not embedded by --collect-all, copy it next to the
 # binary and ensure the loader path resolves it (install_name_tool / rpath).

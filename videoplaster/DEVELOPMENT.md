@@ -323,6 +323,11 @@ bridge is frozen (mouse source + effects work; no Leap/TUIO).
 ```bash
 npm run build-bridge     # PyInstaller -> src-tauri/binaries/videoplaster-bridge-<triple>
 ```
+
+The bridge supports `--device leap|pseye|none` (default `leap`); the frontend also
+switches the device live via a WS control message. PS Eye needs `pseyepy` + libusb
+(`brew install libusb`); the PS Eye is driver-free over libusb.
+
 If `--collect-all leap` does not embed `libLeapC.dylib`, copy it next to the binary
 and fix the loader path (`install_name_tool`/rpath).
 
