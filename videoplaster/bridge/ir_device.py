@@ -118,3 +118,6 @@ class LeapDevice(IrDevice):
         self._thread.start()
     def stop(self) -> None:
         self._running = False
+        if self._thread is not None:
+            self._thread.join(timeout=0.5)
+            self._thread = None
