@@ -6,8 +6,8 @@ import type { IrFrameProvider } from "./ir-provider.ts";
 import type { DetOpt, UndistOpt, MirrorOpt, Roi, DetBlob } from "./types.ts";
 
 export class IrSource extends TouchSource {
-  pipeline = new IrTouchPipeline();
-  provider: IrFrameProvider;
+  readonly pipeline = new IrTouchPipeline();
+  private provider: IrFrameProvider;
   constructor(provider: IrFrameProvider, name = "ir") {
     super();
     this.name = name;
