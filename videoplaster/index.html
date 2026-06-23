@@ -43,8 +43,9 @@ select,button,.fbtn{font-family:monospace;font-size:10px;background:#111;color:#
 
   <div class="section"><div class="row">
     <span class="slabel">Source</span>
-    <select id="sourceSel"><option value="mouse">MOUSE</option><option value="leap-ir">LEAP IR</option><option value="leap-z">LEAP Z</option></select>
-  </div></div>
+    <select id="sourceSel"><option value="mouse">MOUSE</option><option value="leap-ir">LEAP IR</option><option value="pseye">PS EYE</option><option value="ir-camera">IR CAMERA</option><option value="leap-z">LEAP Z</option></select>
+  </div>
+  <div class="row" id="camDeviceRow" style="display:none"><span class="slabel">Camera</span><select id="camDevice"></select></div></div>
 
   <div class="section"><div class="row">
     <span class="slabel">Image</span>
@@ -81,7 +82,7 @@ select,button,.fbtn{font-family:monospace;font-size:10px;background:#111;color:#
 
   <div class="section">
     <div class="row">
-      <span class="slabel">Leap IR</span>
+      <span class="slabel">IR DETECT</span>
       <button id="captureBg">CAPTURE BG</button>
       <button id="resetZone">RESET ZONE</button>
       <button id="restartIr">RESTART IR</button>

@@ -2,12 +2,14 @@ import { EFFECTS, DEFAULT_EFFECT, effectById } from "./effects.ts";
 import { WarpGL } from "./warp-gl.ts";
 import { MouseTouchSource } from "./touch-source.ts";
 import { TouchEmitter } from "./output.ts";
-import { LeapImageSource } from "./leap-image-source.ts";
+import { IrSource } from "./ir-source.ts";
+import { WsFrameProvider } from "./ws-frame-provider.ts";
+import { CameraFrameProvider } from "./camera-frame-provider.ts";
 import { LeapZSource } from "./leap-z-source.ts";
 import { BackgroundCanvas } from "./background.ts";
 import { bindControl, getSetting, saveSetting } from "./persist.ts";
 import { installOverlay, nudgeAxis, drawGrid } from "./ui-overlay.ts";
-import type { TouchEv, Effect } from "./types.ts";
+import type { TouchEv, Effect, Roi } from "./types.ts";
 
 const glCanvas = document.getElementById("glCanvas") as HTMLCanvasElement;
 const pinCanvas = document.getElementById("pinCanvas") as HTMLCanvasElement | null;
@@ -79,10 +81,10 @@ const detOpt = { threshold: 40, minArea: 20, maxArea: 8000, blurAmt: 1, erosionA
 const undistOpt = { on: false, k1: -0.3, k2: 0 };
 const mirrorOpt = { x: false, y: false };
 
-let current: MouseTouchSource | LeapImageSource | LeapZSource | null = null;
-let leapSrc: LeapImageSource | null = null;
+let current: MouseTouchSource | IrSource | LeapZSource | null = null;
+let irSrc: IrSource | null = null;
 
-function wire(src: MouseTouchSource | LeapImageSource | LeapZSource) {
+function wire(src: MouseTouchSource | IrSource | LeapZSource) {
   src.onTouch((ev: TouchEv) => {
     active.addTouch(ev);
     emitter.send(ev);
@@ -285,7 +287,7 @@ function drawPreview(
   if (roi) drawRoi(roi, w, h);
 }
 
-function attachLeapCalib(src: LeapImageSource) {
+function attachLeapCalib(src: IrSource) {
   src.previewCb = (rgba: Uint8ClampedArray, w: number, h: number, blobs) => drawPreview(rgba, w, h, blobs, src.roi);
 }
 
@@ -307,20 +309,20 @@ function previewNorm(e: MouseEvent): [number, number] {
 
 if (irPreview) {
   irPreview.addEventListener("mousedown", (e) => {
-    if (!leapSrc) return;
+    if (!irSrc) return;
     const [nx, ny] = previewNorm(e as MouseEvent);
-    const hit = Object.entries(roiCorners(leapSrc.roi)).find(
+    const hit = Object.entries(roiCorners(irSrc.roi)).find(
       ([, [cx, cy]]) => Math.abs(cx - nx) < 0.04 && Math.abs(cy - ny) < 0.04
     );
     if (hit) dragCorner = hit[0];
   });
 
   window.addEventListener("mousemove", (e) => {
-    if (!dragCorner || !leapSrc) return;
+    if (!dragCorner || !irSrc) return;
     let [nx, ny] = previewNorm(e as MouseEvent);
     nx = Math.max(0, Math.min(1, nx));
     ny = Math.max(0, Math.min(1, ny));
-    const roi = leapSrc.roi;
+    const roi = irSrc.roi;
     let x0 = roi.x,
       y0 = roi.y,
       x1 = roi.x + roi.w,
@@ -340,11 +342,11 @@ if (irPreview) {
     }
     const MIN = 0.05;
     if (x1 - x0 < MIN || y1 - y0 < MIN) return;
-    leapSrc.setRoi({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+    irSrc.setRoi({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
   });
 
   window.addEventListener("mouseup", () => {
-    if (dragCorner && leapSrc) saveSetting("roi", leapSrc.roi);
+    if (dragCorner && irSrc) saveSetting("roi", irSrc.roi);
     dragCorner = null;
   });
 }
@@ -352,8 +354,8 @@ if (irPreview) {
 const captureBgBtn = document.getElementById("captureBg") as HTMLElement | null;
 if (captureBgBtn)
   captureBgBtn.onclick = () => {
-    if (leapSrc) {
-      leapSrc.captureBackground();
+    if (irSrc) {
+      irSrc.captureBackground();
       status.textContent = "background captured";
     }
   };
@@ -361,9 +363,9 @@ if (captureBgBtn)
 const resetZoneBtn = document.getElementById("resetZone") as HTMLElement | null;
 if (resetZoneBtn)
   resetZoneBtn.onclick = () => {
-    if (leapSrc) {
-      leapSrc.setRoi({ x: 0, y: 0, w: 1, h: 1 });
-      saveSetting("roi", leapSrc.roi);
+    if (irSrc) {
+      irSrc.setRoi({ x: 0, y: 0, w: 1, h: 1 });
+      saveSetting("roi", irSrc.roi);
       status.textContent = "zone reset";
     }
   };
@@ -371,29 +373,38 @@ if (resetZoneBtn)
 const restartIrBtn = document.getElementById("restartIr") as HTMLElement | null;
 if (restartIrBtn)
   restartIrBtn.onclick = () => {
-    if (leapSrc) {
-      leapSrc.restart();
+    if (irSrc) {
+      irSrc.restart();
       status.textContent = "IR restarting";
     }
   };
 
 function setSource(name: string) {
   if (current) current.stop();
-  leapSrc = null;
+  irSrc = null;
   if (name === "mouse") {
     current = mouse;
-  } else if (name === "leap-ir") {
-    current = new LeapImageSource();
-    leapSrc = current;
-    Object.assign(leapSrc.opt, detOpt);
-    Object.assign(leapSrc.undist, undistOpt);
-    leapSrc.undist.map = null;
-    Object.assign(leapSrc.mirror, mirrorOpt);
-    const savedRoi = getSetting("roi") as { x: number; y: number; w: number; h: number } | null;
-    if (savedRoi) leapSrc.setRoi(savedRoi);
-    leapSrc.statusCb = (s) => {
-      status.textContent = "IR: " + s;
-    };
+  } else if (name === "leap-ir" || name === "pseye") {
+    const device = name === "pseye" ? "pseye" : "leap";
+    current = new IrSource(new WsFrameProvider("ws://localhost:7681", device), name);
+    irSrc = current;
+    Object.assign(irSrc.opt, detOpt);
+    Object.assign(irSrc.undist, undistOpt);
+    irSrc.undist.map = null;
+    Object.assign(irSrc.mirror, mirrorOpt);
+    const savedRoi = getSetting("roi") as Roi | null;
+    if (savedRoi) irSrc.setRoi(savedRoi);
+    irSrc.statusCb = (s) => { status.textContent = name.toUpperCase() + ": " + s; };
+    attachLeapCalib(current);
+  } else if (name === "ir-camera") {
+    const camId = (getSetting("camDevice") as string) || undefined;
+    current = new IrSource(new CameraFrameProvider(camId), "ir-camera");
+    irSrc = current;
+    Object.assign(irSrc.opt, detOpt);
+    Object.assign(irSrc.undist, undistOpt);
+    irSrc.undist.map = null;
+    Object.assign(irSrc.mirror, mirrorOpt);
+    irSrc.statusCb = (s) => { status.textContent = "CAMERA: " + s; };
     attachLeapCalib(current);
   } else if (name === "leap-z") {
     current = new LeapZSource();
@@ -484,10 +495,10 @@ for (const [id, key, parse] of DET)
       const numVal = parse(String(v));
       if (key === "threshold" || key === "minArea" || key === "maxArea") {
         (detOpt as any)[key] = numVal;
-        if (leapSrc) (leapSrc.opt as any)[key] = numVal;
+        if (irSrc) (irSrc.opt as any)[key] = numVal;
       } else if (key === "blurAmt" || key === "erosionAmt") {
         (detOpt as any)[key] = numVal;
-        if (leapSrc) (leapSrc.opt as any)[key] = numVal;
+        if (irSrc) (irSrc.opt as any)[key] = numVal;
       }
     },
     (v) => String(Math.round(parse(String(v))))
@@ -495,30 +506,30 @@ for (const [id, key, parse] of DET)
 
 bindControl("invert", (v) => {
   detOpt.invert = Boolean(v);
-  if (leapSrc) leapSrc.opt.invert = Boolean(v);
+  if (irSrc) irSrc.opt.invert = Boolean(v);
 });
 bindControl("mirrorX", (v) => {
   mirrorOpt.x = Boolean(v);
-  if (leapSrc) leapSrc.mirror.x = Boolean(v);
+  if (irSrc) irSrc.mirror.x = Boolean(v);
 });
 bindControl("mirrorY", (v) => {
   mirrorOpt.y = Boolean(v);
-  if (leapSrc) leapSrc.mirror.y = Boolean(v);
+  if (irSrc) irSrc.mirror.y = Boolean(v);
 });
 bindControl("undistort", (v) => {
   undistOpt.on = Boolean(v);
-  if (leapSrc) {
-    leapSrc.undist.on = Boolean(v);
-    leapSrc.undist.map = null;
+  if (irSrc) {
+    irSrc.undist.on = Boolean(v);
+    irSrc.undist.map = null;
   }
 });
 bindControl(
   "undistK1",
   (v) => {
     undistOpt.k1 = parseFloat(String(v));
-    if (leapSrc) {
-      leapSrc.undist.k1 = undistOpt.k1;
-      leapSrc.undist.map = null;
+    if (irSrc) {
+      irSrc.undist.k1 = undistOpt.k1;
+      irSrc.undist.map = null;
     }
   },
   (v) => (+parseFloat(String(v))).toFixed(2)
@@ -527,9 +538,9 @@ bindControl(
   "undistK2",
   (v) => {
     undistOpt.k2 = parseFloat(String(v));
-    if (leapSrc) {
-      leapSrc.undist.k2 = undistOpt.k2;
-      leapSrc.undist.map = null;
+    if (irSrc) {
+      irSrc.undist.k2 = undistOpt.k2;
+      irSrc.undist.map = null;
     }
   },
   (v) => (+parseFloat(String(v))).toFixed(2)
@@ -588,6 +599,30 @@ const savedFx = getSetting("fx.active");
 setEffect(typeof savedFx === "string" && effectById(savedFx) ? savedFx : DEFAULT_EFFECT);
 
 bindControl("sourceSel", (v) => setSource(String(v)));
+
+const camSel = document.getElementById("camDevice") as HTMLSelectElement | null;
+const camRow = document.getElementById("camDeviceRow") as HTMLElement | null;
+async function refreshCameras() {
+  if (!camSel) return;
+  try {
+    const cams = await CameraFrameProvider.listCameras();
+    camSel.innerHTML = cams.map((c, i) => `<option value="${c.deviceId}">${c.label || "Camera " + (i + 1)}</option>`).join("");
+    const saved = getSetting("camDevice") as string | null;
+    if (saved) camSel.value = saved;
+  } catch { /* enumerate may reject before permission */ }
+}
+if (camSel) {
+  camSel.addEventListener("change", () => {
+    saveSetting("camDevice", camSel.value);
+    if ((document.getElementById("sourceSel") as HTMLSelectElement).value === "ir-camera") setSource("ir-camera");
+  });
+}
+// show the camera picker only for the IR CAMERA source
+const sourceSelEl = document.getElementById("sourceSel") as HTMLSelectElement | null;
+function syncCamRow() { if (camRow) camRow.style.display = sourceSelEl?.value === "ir-camera" ? "" : "none"; }
+if (sourceSelEl) { sourceSelEl.addEventListener("change", syncCamRow); }
+syncCamRow();
+refreshCameras();
 
 status.textContent = `canvas ${glCanvas.width}x${glCanvas.height} ready`;
 
