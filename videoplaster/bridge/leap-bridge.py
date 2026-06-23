@@ -1,54 +1,20 @@
 # videoplaster/bridge/leap-bridge.py
-"""Receives TouchEvent JSON from the browser over WS :7681 and emits TUIO 1.1 to UDP :3333.
-Phase 2 adds the IR image push on the same WS server."""
+"""WS :7681 — receives TouchEvent + device-control JSON from the browser, broadcasts
+IR frames from the selected device, and emits TUIO 1.1 to UDP :3333."""
 import asyncio, json, argparse
 import websockets
 from tuio import build_2dcur_bundle
+from ir_device import DeviceManager, LeapDevice, PsEyeDevice, classify_message
 
-import struct, threading
-try:
-    import leap
-    from leap.enums import PolicyFlag      # NOTE: PolicyFlag lives in leap.enums, not leap.*
-    HAVE_LEAP = True
-except ImportError:
-    HAVE_LEAP = False
+LATEST_IMAGE = {"buf": None, "seq": 0}
 
-LATEST_IMAGE = {"buf": None, "seq": 0}   # seq increments per frame so each WS client tracks its own progress
+def _registry():
+    return {"leap": lambda: LeapDevice(), "pseye": lambda: PsEyeDevice()}
 
-def _pack(w, h, buf):
-    return struct.pack("<II", w, h) + bytes(buf)[: w * h]
-
-def _extract_left(event):
-    # The LeapC Image wrapper exposes only matrix_version; the pixels live in the raw
-    # cffi LEAP_IMAGE struct: properties{width,height,bpp} + void* data + uint32 offset.
-    d = event.image[0]._data
-    p = d.properties
-    w, h, bpp = int(p.width), int(p.height), int(p.bpp)
-    ptr = leap.ffi.cast("uint8_t*", d.data)
-    return w, h, bytes(leap.ffi.buffer(ptr + d.offset, w * h * bpp))
-
-class _ImageListener(leap.Listener if HAVE_LEAP else object):
-    def on_device_event(self, event):
-        print("Leap device connected")
-    def on_image_event(self, event):
-        try:
-            w, h, buf = _extract_left(event)
-        except Exception as ex:
-            print("image extract failed:", repr(ex)); return
-        LATEST_IMAGE["buf"] = _pack(w, h, buf)
-        LATEST_IMAGE["seq"] += 1
-
-def start_leap():
-    if not HAVE_LEAP:
-        print("WARNING: `leap` not importable — image stream disabled (MOUSE/TUIO still work)"); return
-    def run():
-        conn = leap.Connection(); conn.add_listener(_ImageListener())
-        with conn.open():
-            try: conn.set_policy_flags([PolicyFlag.Images])
-            except Exception as e: print("image policy failed:", repr(e))
-            import time
-            while True: time.sleep(0.01)
-    threading.Thread(target=run, daemon=True).start()
+def _on_frame(w, h, gray):
+    from ir_device import pack_frame
+    LATEST_IMAGE["buf"] = pack_frame(w, h, gray)
+    LATEST_IMAGE["seq"] += 1
 
 class TuioOut:
     def __init__(self, ip, port):
@@ -80,29 +46,33 @@ async def push_images(ws):
             except Exception: return
         await asyncio.sleep(1/30)
 
-async def handler(ws, tuio):
+async def handler(ws, tuio, manager):
     sender = asyncio.create_task(push_images(ws))
     try:
         async for raw in ws:
             if isinstance(raw, bytes): continue
-            try: ev = json.loads(raw)
+            try: msg = json.loads(raw)
             except Exception: continue
-            if isinstance(ev, dict) and "type" in ev:
-                continue  # control message (e.g. device select) — ignored by this bridge; Phase 2 handles it
-            tuio.handle(ev); tuio.flush()
+            if classify_message(msg) == "device":
+                manager.select(msg.get("name", "none"))
+            else:
+                tuio.handle(msg); tuio.flush()
     finally:
         sender.cancel()
 
 async def main(args):
     tuio = TuioOut(args.tuio_ip, args.tuio_port)
-    start_leap()
-    async with websockets.serve(lambda ws: handler(ws, tuio), "localhost", args.ws_port):
-        print(f"WS :{args.ws_port}  TUIO → {args.tuio_ip}:{args.tuio_port}")
+    manager = DeviceManager(_registry())
+    manager.on_frame = _on_frame
+    manager.select(args.device)
+    async with websockets.serve(lambda ws: handler(ws, tuio, manager), "localhost", args.ws_port):
+        print(f"WS :{args.ws_port}  device={args.device}  TUIO -> {args.tuio_ip}:{args.tuio_port}")
         await asyncio.Future()
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--ws-port", type=int, default=7681)
+    p.add_argument("--device", default="leap", choices=["leap", "pseye", "none"])
     p.add_argument("--tuio-ip", default="127.0.0.1")
     p.add_argument("--tuio-port", type=int, default=3333)
     asyncio.run(main(p.parse_args()))
