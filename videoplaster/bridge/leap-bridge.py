@@ -87,6 +87,8 @@ async def handler(ws, tuio):
             if isinstance(raw, bytes): continue
             try: ev = json.loads(raw)
             except Exception: continue
+            if isinstance(ev, dict) and "type" in ev:
+                continue  # control message (e.g. device select) — ignored by this bridge; Phase 2 handles it
             tuio.handle(ev); tuio.flush()
     finally:
         sender.cancel()
