@@ -4,7 +4,15 @@ The entry script (leap-bridge.py) wires these into the WS server. Pure helpers a
 the device facade live here so they stay importable + unit-testable without hardware.
 """
 import struct
+import threading
 from typing import Callable, Dict, Optional
+
+try:
+    import leap
+    from leap.enums import PolicyFlag
+    _HAVE_LEAP = True
+except ImportError:
+    _HAVE_LEAP = False
 
 
 def pack_frame(w: int, h: int, buf: bytes) -> bytes:
@@ -63,3 +71,50 @@ class DeviceManager:
         dev.start(lambda w, h, buf: self.on_frame(w, h, buf))
         self._device = dev
         self.active_name = name
+
+
+def _extract_left(event):
+    # Pixels live in the raw cffi LEAP_IMAGE struct (the wrapper exposes only matrix_version).
+    d = event.image[0]._data
+    p = d.properties
+    w, h, bpp = int(p.width), int(p.height), int(p.bpp)
+    ptr = leap.ffi.cast("uint8_t*", d.data)
+    return w, h, bytes(leap.ffi.buffer(ptr + d.offset, w * h * bpp))
+
+
+class LeapDevice(IrDevice):
+    """LeapC IR capture (left camera)."""
+    def __init__(self) -> None:
+        self._on_frame: Optional[OnFrame] = None
+        self._thread: Optional[threading.Thread] = None
+        self._running = False
+    def start(self, on_frame: OnFrame) -> None:
+        if not _HAVE_LEAP:
+            print("[leap] bindings not importable — no frames")
+            return
+        self._on_frame = on_frame
+        self._running = True
+        device = self
+
+        class _Listener(leap.Listener):
+            def on_image_event(self, event):
+                try:
+                    w, h, buf = _extract_left(event)
+                except Exception as ex:
+                    print("[leap] image extract failed:", repr(ex)); return
+                if device._on_frame:
+                    device._on_frame(w, h, buf)
+
+        def run():
+            conn = leap.Connection(); conn.add_listener(_Listener())
+            with conn.open():
+                try: conn.set_policy_flags([PolicyFlag.Images])
+                except Exception as e: print("[leap] image policy failed:", repr(e))
+                import time
+                while device._running:
+                    time.sleep(0.01)
+
+        self._thread = threading.Thread(target=run, daemon=True)
+        self._thread.start()
+    def stop(self) -> None:
+        self._running = False
