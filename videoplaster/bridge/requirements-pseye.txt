@@ -1,0 +1,11 @@
+# Optional: PlayStation Eye (IR-modded) support for the bridge.
+# pseyepy is NOT on PyPI — it installs from GitHub and links libusb via cffi.
+#
+# Prereq:  brew install libusb
+# Install: .venv/bin/pip install -r bridge/requirements-pseye.txt
+#
+# The bridge guards these imports, so it runs fine WITHOUT them
+# (only the PS EYE device needs them; LEAP and MOUSE work regardless).
+cython
+numpy>=1.26.0
+pseyepy @ git+https://github.com/bensondaled/pseyepy.git

@@ -325,8 +325,16 @@ npm run build-bridge     # PyInstaller -> src-tauri/binaries/videoplaster-bridge
 ```
 
 The bridge supports `--device leap|pseye|none` (default `leap`); the frontend also
-switches the device live via a WS control message. PS Eye needs `pseyepy` + libusb
-(`brew install libusb`); the PS Eye is driver-free over libusb.
+switches the device live via a WS control message. PS Eye support is **optional** and
+not part of the core setup (the bridge guards the imports). To enable it:
+
+```bash
+brew install libusb                                      # libusb (pseyepy links it)
+.venv/bin/pip install -r bridge/requirements-pseye.txt   # cython + numpy + pseyepy (from GitHub, not PyPI)
+```
+
+`build-bridge.sh` bundles `pseyepy`/`numpy` into the sidecar only when they are
+installed. The PS Eye is driver-free over libusb.
 
 If `--collect-all leap` does not embed `libLeapC.dylib`, copy it next to the binary
 and fix the loader path (`install_name_tool`/rpath).
