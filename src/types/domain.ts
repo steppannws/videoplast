@@ -10,6 +10,7 @@ export interface DetOpt {
   threshold: number; minArea: number; maxArea: number;
   blurAmt: number; erosionAmt: number; invert: boolean;
   brightness: number; contrast: number; absDiff: boolean;
+  motion: boolean; motionRate: number;
 }
 
 export interface UndistOpt { on: boolean; k1: number; k2: number; map: Int16Array | null; }

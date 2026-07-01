@@ -10,7 +10,7 @@ export const PIN_KEYS: readonly PinKey[] = ["tl", "tr", "br", "bl"];
 export const AXES: readonly Axis[] = ["x", "y"];
 
 // The numeric DetOpt fields (everything except the boolean `invert`).
-export type NumericDetKey = "threshold" | "minArea" | "maxArea" | "blurAmt" | "erosionAmt" | "brightness" | "contrast";
+export type NumericDetKey = "threshold" | "minArea" | "maxArea" | "blurAmt" | "erosionAmt" | "brightness" | "contrast" | "motionRate";
 
 // Slider id -> DetOpt key + integer flag. Drives both the IR-detect sliders below
 // and the typed wiring in the source controller (no stringly-typed `as any`).
@@ -22,6 +22,7 @@ export const DET_SLIDERS: ReadonlyArray<{ id: string; key: NumericDetKey; int: b
   { id: "erosion", key: "erosionAmt", int: true },
   { id: "brightness", key: "brightness", int: true },
   { id: "contrast", key: "contrast", int: false },
+  { id: "motionRate", key: "motionRate", int: false },
 ];
 
 const slider = (
@@ -106,6 +107,7 @@ export const PANEL: SectionCfg[] = [
       { kind: "button", id: "restartIr", label: "RESTART IR" },
       { kind: "checkbox", id: "invert", label: "INVERT" },
       { kind: "checkbox", id: "diffMode", label: "DIFF MODE" },
+      { kind: "checkbox", id: "motion", label: "MOTION" },
       { kind: "checkbox", id: "mirrorX", label: "MIRROR X" },
       { kind: "checkbox", id: "mirrorY", label: "MIRROR Y" },
       slider("brightness", "BRIGHTNESS", -128, 128, 1, DET_DEFAULTS.brightness),
@@ -115,6 +117,7 @@ export const PANEL: SectionCfg[] = [
       slider("maxArea", "MAX AREA", 100, 20000, 100, DET_DEFAULTS.maxArea),
       slider("blur", "BLUR", 0, 6, 1, DET_DEFAULTS.blurAmt),
       slider("erosion", "EROSION", 0, 6, 1, DET_DEFAULTS.erosionAmt),
+      slider("motionRate", "MOTION RATE", 0.01, 0.5, 0.01, DET_DEFAULTS.motionRate),
       { kind: "checkbox", id: "undistort", label: "FISHEYE" },
       slider("undistK1", "K1", -1, 1, 0.01, UNDIST_DEFAULTS.k1),
       slider("undistK2", "K2", -0.5, 0.5, 0.01, UNDIST_DEFAULTS.k2),

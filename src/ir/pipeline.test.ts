@@ -26,3 +26,23 @@ test("process emits a tracked TouchEv for a bright blob", () => {
   const e = events[0];
   assert.ok(e.x > 0.3 && e.x < 0.7 && e.y > 0.3 && e.y < 0.7, `blob near center, got ${e.x},${e.y}`);
 });
+
+test("motion mode ignores a static bright region but fires on a new one", () => {
+  const w = 32, h = 32;
+  const stat = new Uint8Array(w * h);
+  for (let y = 4; y < 9; y++) for (let x = 4; x < 9; x++) stat[y * w + x] = 255; // static bright square
+  const p = new IrTouchPipeline();
+  p.opt.motion = true; p.opt.motionRate = 0.05;
+  p.opt.threshold = 40; p.opt.minArea = 2; p.opt.maxArea = 8000; p.opt.erosionAmt = 0; p.opt.blurAmt = 0;
+  const events: any[] = [];
+  p.onEvent = (ev) => events.push(ev);
+  // Let avg settle on the static scene over several identical frames.
+  for (let i = 0; i < 40; i++) p.process(stat, w, h);
+  assert.equal(events.length, 0, "static region should not produce motion events");
+  // A brand-new bright region elsewhere is motion → should fire.
+  const moved = stat.slice();
+  for (let y = 20; y < 25; y++) for (let x = 20; x < 25; x++) moved[y * w + x] = 255;
+  p.process(moved, w, h);
+  assert.ok(events.length >= 1, "a newly appearing region should fire a motion event");
+  assert.ok(events[0].x > 0.55 && events[0].y > 0.55, `event at the moved region, got ${events[0].x},${events[0].y}`);
+});

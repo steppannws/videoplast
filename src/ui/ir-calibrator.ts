@@ -158,7 +158,7 @@ export class IrCalibrator {
     if (!ctx) return;
     const lines = [
       `BRI ${opt.brightness} · CON ${opt.contrast.toFixed(2)} · THR ${opt.threshold} · BLUR ${opt.blurAmt} · ERO ${opt.erosionAmt}`,
-      `MIN ${opt.minArea} · MAX ${opt.maxArea} · INV ${opt.invert ? "on" : "off"} · DIFF ${opt.absDiff ? "on" : "off"} · ${blobCount} blobs`,
+      `MIN ${opt.minArea} · MAX ${opt.maxArea} · INV ${opt.invert ? "on" : "off"} · DIFF ${opt.absDiff ? "on" : "off"} · MOT ${opt.motion ? "on" : "off"} · ${blobCount} blobs`,
     ];
     ctx.save();
     ctx.font = "11px monospace";

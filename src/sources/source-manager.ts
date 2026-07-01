@@ -53,11 +53,12 @@ export class SourceManager {
   wire(): void {
     bindSelect("sourceSel", (v) => this.setSource(v));
     for (const d of DET_SLIDERS) {
-      bindNumber(d.id, (n) => this.setDet(d.key, n), (n) => String(Math.round(n)),
+      bindNumber(d.id, (n) => this.setDet(d.key, n), (n) => d.int ? String(Math.round(n)) : n.toFixed(2),
         d.int ? (s) => parseInt(s, 10) : parseFloat);
     }
     bindBool("invert", (b) => { this.detOpt.invert = b; if (this.irSrc) this.irSrc.opt.invert = b; });
     bindBool("diffMode", (b) => { this.detOpt.absDiff = b; if (this.irSrc) this.irSrc.opt.absDiff = b; });
+    bindBool("motion", (b) => { this.detOpt.motion = b; if (this.irSrc) this.irSrc.opt.motion = b; });
     bindBool("mirrorX", (b) => this.setMirror("x", b));
     bindBool("mirrorY", (b) => this.setMirror("y", b));
     bindBool("undistort", (b) => this.setUndistOn(b));

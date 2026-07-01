@@ -34,6 +34,7 @@ export class IrTouchPipeline {
   h = 0;
   frame: Uint8ClampedArray | null = null;
   bg: Uint8ClampedArray | null = null;
+  avg: Float32Array | null = null;   // running-average background for motion mode
   opt: DetOpt = { ...DET_DEFAULTS };
   undist: UndistOpt = { ...UNDIST_DEFAULTS, map: null };
   roi: Roi = { x: 0, y: 0, w: 1, h: 1 };
@@ -43,6 +44,27 @@ export class IrTouchPipeline {
   onEvent: (ev: TouchEv) => void = () => {};
   captureBackground(): void { if (this.frame) this.bg = this.frame.slice(); }
   setRoi(roi: Roi): void { this.roi = roi; }
+
+  // Adaptive motion: |current - runningAvg|, then decay avg toward current by `rate`.
+  // Static scene melts into avg (→ 0); anything that moves stays bright. First frame
+  // seeds avg and reports no motion. Lower rate = slower forget = held touches persist.
+  private motionDiff(rgba: Uint8ClampedArray, n: number, rate: number): Uint8ClampedArray {
+    const out = new Uint8ClampedArray(n * 4);
+    let avg = this.avg;
+    if (!avg || avg.length !== n) {
+      avg = new Float32Array(n);
+      for (let i = 0; i < n; i++) avg[i] = rgba[i*4];
+      this.avg = avg;
+      return out;
+    }
+    for (let i = 0; i < n; i++) {
+      const g = rgba[i*4];
+      const m = Math.abs(g - avg[i]);
+      avg[i] += (g - avg[i]) * rate;
+      out[i*4] = out[i*4+1] = out[i*4+2] = m; out[i*4+3] = 255;
+    }
+    return out;
+  }
   // Gray frame -> RGBA -> mirror -> undistort -> bg-subtract -> blobs -> roi -> track -> emit.
   process(gray: Uint8Array, w: number, h: number): void {
     this.w = w; this.h = h;
@@ -55,8 +77,10 @@ export class IrTouchPipeline {
     }
     this.frame = rgba;
     if (this.bg && this.bg.length !== rgba.length) this.bg = null;
-    const sub = this.bg ? subtractBackground(rgba, this.bg, w * h, this.opt.absDiff) : rgba;
-    const detIn = applyBrightnessContrast(sub, w * h, this.opt.brightness, this.opt.contrast);
+    const base = this.opt.motion
+      ? this.motionDiff(rgba, w * h, this.opt.motionRate)
+      : this.bg ? subtractBackground(rgba, this.bg, w * h, this.opt.absDiff) : rgba;
+    const detIn = applyBrightnessContrast(base, w * h, this.opt.brightness, this.opt.contrast);
     const { blobs, bin } = findBlobs({ data: detIn, width: w, height: h }, this.opt);
     const mapped = blobs
       .map((b) => { const { u, v } = roiMap(b.cx, b.cy, w, h, this.roi); return { x: u, y: v, strength: Math.min(1, b.bright/255) }; })

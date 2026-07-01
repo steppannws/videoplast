@@ -6,6 +6,7 @@ import type { DetOpt, MirrorOpt } from "../types/index.ts";
 export const DET_DEFAULTS: DetOpt = {
   threshold: 40, minArea: 20, maxArea: 8000, blurAmt: 1, erosionAmt: 2, invert: false,
   brightness: 0, contrast: 1, absDiff: false,
+  motion: false, motionRate: 0.05,
 };
 
 // Without `map`: callers that need the runtime field add `map: null` themselves.

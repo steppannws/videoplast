@@ -1,6 +1,10 @@
 // src/ir/blobs.ts
 import type { DetOpt, DetBlob } from "../types/index.ts";
 
+// Only the fields findBlobs actually consumes. Decoupled from the full DetOpt so
+// adding calibration options (brightness, motion, …) never churns findBlobs' callers.
+export type BlobOpt = Pick<DetOpt, "threshold" | "minArea" | "maxArea" | "blurAmt" | "erosionAmt" | "invert">;
+
 export function boxBlur(g: Float32Array, w: number, h: number, r: number): Float32Array {
   if (!r) return g; const t = new Float32Array(w*h), o = new Float32Array(w*h);
   for (let y=0;y<h;y++) for (let x=0;x<w;x++){ let s=0; for(let dx=-r;dx<=r;dx++){const nx=Math.max(0,Math.min(w-1,x+dx)); s+=g[y*w+nx];} t[y*w+x]=s/(2*r+1); }
@@ -25,7 +29,7 @@ export function grayscaleFromRGBA(data: Uint8ClampedArray, w: number, h: number)
   return g;
 }
 // frame = {data:RGBA Uint8ClampedArray, width, height}
-export function findBlobs(frame: { data: Uint8ClampedArray; width: number; height: number }, opt: DetOpt): { blobs: DetBlob[]; bin: Uint8Array } {
+export function findBlobs(frame: { data: Uint8ClampedArray; width: number; height: number }, opt: BlobOpt): { blobs: DetBlob[]; bin: Uint8Array } {
   const { width: w, height: h, data } = frame;
   const { threshold, minArea, maxArea, blurAmt, erosionAmt, invert } = opt;
   const gray = grayscaleFromRGBA(data, w, h);
