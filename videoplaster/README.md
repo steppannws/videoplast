@@ -1,418 +1,266 @@
 # VIDEOPLASTER 02
 
-A web-based touch detection and water effect application powered by **Leap Motion Controller 2**. Uses IR image processing, GPU-accelerated water simulation, perspective correction, and TUIO output over UDP.
+**English** · [Español](./README.es.md)
 
-**Developed by**: [Armado Frezze](https://github.com/armadofrezze) at **Doopler Studio**
-
-**Key**: Leap Motion Controller 2 (Gemini) mounted behind white acrylic → IR camera (no depth) → touch detection → GPU water effect + TUIO broadcast over UDP :3333. Rear projection compatible.
+A web-based touch-detection and touch-reactive visual-effects application. It uses IR image processing, GPU-accelerated effects, 4-pin keystone correction, and TUIO output over UDP.
 
 ---
 
 ## Quick Start
 
-### 1. Install Dependencies
 ```bash
 cd videoplaster
 npm install
-./setup.sh  # Python venv (3.12) + LeapC bindings (one-time)
+./setup.sh        # Python venv (3.12) + LeapC bindings (one-time)
+npm run dev       # http://localhost:8000/  (MOUSE source works with no hardware)
+./run.sh          # full app: Python bridge (IR + TUIO) + Vite dev server
 ```
 
-### 2. Run Development Server
-```bash
-npm run dev
-# Opens http://localhost:8000/
-```
-
-### 3. Run the Full App (Bridge + Server)
-```bash
-./run.sh
-# Starts Python bridge + Vite dev server
-# Bridge: IR frames (WS :7681) + TUIO output (UDP :3333)
-```
+- **`npm run dev`** — frontend only. Use the `MOUSE` source to develop without hardware.
+- **`./run.sh`** — frontend + Python bridge (IR frames over WS :7681, TUIO over UDP :3333).
 
 ---
 
 ## System Requirements
 
 ### Hardware
-- **Leap Motion Controller 2** (optional; MOUSE fallback available)
-  - Mount 15–30 cm behind acrylic surface
-  - IR reflections from fingers trigger detection
-  - Rear-projection compatible (IR-pass filter blocks visible light)
+- **Leap Motion Controller 2** *(optional; a `MOUSE` fallback is always available)*
+  - Mount 15–30 cm behind the acrylic surface.
+  - IR reflections from fingers touching the acrylic trigger detection.
+  - Rear-projection compatible (the IR-pass filter blocks visible projector light).
 
 ### Software
 - **macOS** (Apple Silicon or Intel)
 - **Node.js** 18+ and **npm**
-- **Python 3.12** *(system default may be older; install if missing)*
+- **Python 3.12** — the Ultraleap SDK ships a prebuilt `leapc_cffi` for 3.12, avoiding compilation.
   ```bash
   brew install python@3.12
   ```
-  Ultraleap SDK ships a prebuilt `leapc_cffi` for Python 3.12, avoiding compilation.
-  
-- **Ultraleap Tracking Software v6.2.0+**
-  1. Download from: https://leap2.ultraleap.com/
-  2. Select **Leap Motion Controller 2**
-  3. Install and run the tracking service
-  4. Provides the LeapC library + service the Python bindings connect to
+- **Ultraleap Tracking Software v6.2.0+** — download from https://leap2.ultraleap.com/ (select *Leap Motion Controller 2*), install, and run the tracking service.
 
 ---
 
 ## Installation
 
-### Step 1: Install Ultraleap Tracking Software
 ```bash
-# Download from https://leap2.ultraleap.com/
-# Install .dmg / .pkg
-# Launch the Ultraleap control panel (verify service is running)
-```
+# 1. Install the Ultraleap Tracking Software (see link above) and launch the service.
 
-### Step 2: Verify Python 3.12
-```bash
-python3.12 --version
-# Output: Python 3.12.x
-# If missing, brew install python@3.12
-```
+# 2. Verify Python 3.12
+python3.12 --version            # Python 3.12.x  (brew install python@3.12 if missing)
 
-### Step 3: Clone & Setup
-```bash
+# 3. Clone & set up
 git clone <repo-url> videoplaster
 cd videoplaster
-
-# Install Node dependencies
-npm install
-
-# Create Python venv + install LeapC bindings
-./setup.sh
-# This creates .venv and installs:
-#   - websockets (bridge ↔ browser)
-#   - python-osc (TUIO broadcast)
-#   - leapc-python-bindings (into .venv as editable)
-
-# Verify Leap device is connected
-./check-leap.sh
-# Output: DEVICE(S) CONNECTED
-# If "NO DEVICE", check USB cable and Ultraleap service
+npm install                     # Node dependencies
+./setup.sh                      # .venv + LeapC bindings + websockets + python-osc
+./check-leap.sh                 # must print: DEVICE(S) CONNECTED
 ```
 
 ---
 
-## Application Structure
+## Project Structure
 
-### Directory Layout
+The frontend is a **Vite + vanilla TypeScript** app (no framework), organized by feature. The backend is a small **Python bridge**; an optional **Tauri** shell packages it as a desktop app.
+
 ```
-src/                    # TypeScript source
-├── app.ts              # Main app: UI, event wiring, canvas setup
-├── touch-source.ts     # TouchSource base class + MouseTouchSource
-├── leap-image-source.ts  # IR pipeline: WebSocket → blobs → touches
-├── leap-z-source.ts    # Leap hand tracking (Z-axis touch detection)
-├── water-gl.ts         # GPU water simulation shader
-├── warp-gl.ts          # 4-pin keystone perspective correction
-├── background.ts       # Image/video background layer
-├── output.ts           # TouchEmitter: TUIO broadcast
-├── blobs.ts            # Blob detection algorithm
-├── tracking.ts         # Temporal blob tracking → touch IDs
-├── homography.ts       # Camera ↔ surface coordinate mapping
-├── ir-preprocess.ts    # Background subtract, blur, erosion
-├── undistort.ts        # Fisheye lens correction (optional)
-├── ui-overlay.ts       # Keyboard overlay + calibration grid
-├── persist.ts          # localStorage control state
-├── types.ts            # Shared TypeScript types
-└── *.test.ts           # 22 unit tests
-
-bridge/                 # Python backend
-├── leap-bridge.py      # WebSocket server + LeapC reader + TUIO sender
-├── tuio.py             # TUIO 1.1 protocol encoder
-└── test_tuio.py        # 3 TUIO encoding tests
-
-spike/                  # Phase 0 gate: raw IR proof-of-concept
-index.html              # Entry point
-tsconfig.json           # TypeScript strict config
-vite.config.ts          # Vite bundler
+videoplaster/
+├── index.html                  # entry: a single <div id="ui"> + loads src/core/app.ts
+├── styles/                     # extracted CSS
+│   ├── tokens.css              # design tokens (colors, sizes, fonts as CSS variables)
+│   ├── base.css                # reset, page shell, canvases
+│   └── ui.css                  # control-panel styles
+├── src/
+│   ├── core/                   # bootstrap + render pipeline
+│   │   ├── app.ts              # ~110-line bootstrap: mount panel, wire controllers, start loop
+│   │   ├── render-loop.ts      # per-frame pipeline (bg → effect → warp → overlay)
+│   │   └── background.ts       # image/video background layer
+│   ├── config/                 # declarative configuration
+│   │   ├── controls.ts         # the control panel described as data
+│   │   └── defaults.ts         # single source of truth for detection/canvas defaults
+│   ├── types/                  # domain model (domain / effect / settings + barrel)
+│   ├── ui/                     # UI layer
+│   │   ├── control-factory.ts  # reusable DOM builders (Slider / Checkbox / Section …)
+│   │   ├── controls-panel.ts   # builds #ui from config/controls.ts
+│   │   ├── effect-controller.ts + effect-param-panel.ts   # effect selection + params
+│   │   ├── pin-controller.ts   # corner-pin overlay, drag + arrow-key nudge
+│   │   ├── ir-calibrator.ts    # IR preview + ROI calibration
+│   │   ├── overlay.ts          # keyboard layer + calibration grid
+│   │   └── persist.ts          # localStorage + typed control binding
+│   ├── gl/                     # WebGL primitives
+│   │   ├── gl-util.ts          # shader/program/quad/texture helpers
+│   │   ├── base-effect.ts      # shared effect scaffolding (FBO, textures, setBackground)
+│   │   ├── warp-gl.ts          # 4-pin keystone perspective correction
+│   │   └── homography.ts       # camera ↔ surface coordinate mapping
+│   ├── effects/                # 6 touch-reactive effects + registry
+│   │   ├── registry.ts         # EFFECTS list (order = number-key index)
+│   │   └── water/ink/reveal/thermal/shatter/particles-gl.ts
+│   ├── sources/                # touch sources + registry
+│   │   ├── touch-source.ts     # base + MouseTouchSource
+│   │   ├── ir-source.ts        # IR provider → pipeline
+│   │   ├── leap-z-source.ts    # Leap hand tracking (Z threshold)
+│   │   ├── source-manager.ts + source-registry.ts   # source switching
+│   │   └── output.ts           # TouchEmitter → bridge
+│   ├── ir/                     # IR detection pipeline
+│   │   ├── pipeline.ts         # gray frame → tracked touches
+│   │   ├── provider.ts / ws-frame-provider.ts / camera-frame-provider.ts
+│   │   ├── blobs.ts / tracking.ts / preprocess.ts / undistort.ts
+│   └── util/                   # math.ts (clamp, …)
+├── bridge/                     # Python backend: WS :7681 (IR) + TUIO UDP :3333
+├── src-tauri/                  # Tauri desktop shell (see "Standalone macOS App")
+└── vite.config.ts / tsconfig.json / package.json
 ```
 
-### Data Flow
+### Data flow
 
-1. **IR Capture** (leap-image-source.ts)
-   - Python `leap-bridge.py` reads raw IR frames from LeapC
-   - Sends (width, height, grayscale pixels) via WebSocket :7681
-
-2. **Image Processing**
-   - Background subtraction (ir-preprocess.ts)
-   - Gaussian blur + erosion (morphological filtering)
-   - Blob detection (blobs.ts)
-   - Optional fisheye undistortion (undistort.ts)
-
-3. **Tracking** (tracking.ts)
-   - Temporal tracking by proximity (maxDist = 0.08)
-   - Emits: `down` (new), `move` (existing), `up` (lost)
-
-4. **Coordinate Mapping** (homography.ts)
-   - Camera pixel → normalized surface UV [0,1]
-   - ROI support (capture zone in 0..1 frame rectangle)
-
-5. **Rendering & Output**
-   - Water simulation (GPU, water-gl.ts)
-   - Keystone correction (4-pin warp-gl.ts)
-   - TUIO broadcast to UDP :3333 (output.ts)
-   - Touch events feed water ripples in real-time
+1. **IR capture** — the Python bridge reads raw IR frames from LeapC and sends `(width, height, grayscale)` over WebSocket :7681.
+2. **Image processing** (`src/ir/`) — background subtraction → blur/erosion → blob detection → optional fisheye undistortion.
+3. **Tracking** (`ir/tracking.ts`) — temporal proximity matching (`maxDist = 0.08`) emits `down` / `move` / `up` touch events.
+4. **Mapping** (`gl/homography.ts`, `ir/pipeline.ts`) — camera pixels → normalized surface UV `[0,1]`, with a capture ROI.
+5. **Render & output** — the active effect reacts to touches; `gl/warp-gl.ts` applies keystone correction; `sources/output.ts` broadcasts TUIO to UDP :3333.
 
 ---
 
-## Running the Application
+## Effects
 
-### Phase 0: Verify IR Stream (First Time)
-Before calibration, confirm raw IR images are available:
+Six touch-reactive GPU effects, selectable from the **EFFECT** dropdown or with **number keys 1–6**:
 
-```bash
-./spike.sh
-# Opens http://localhost:8000/spike/spike.html
-```
+| Key | Effect | Description |
+|-----|--------|-------------|
+| 1 | **WATER** | Wave-equation ripples that distort the background |
+| 2 | **INK BLOOM** | Navier-Stokes-lite fluid ink that swirls and flows |
+| 3 | **EROSION REVEAL** | Touch erodes a cover layer to reveal the background |
+| 4 | **THERMAL HEAT** | Heat diffuses and cools, tinted with a thermal palette |
+| 5 | **SHATTER GLASS** | Procedural voronoi shards crack where touched |
+| 6 | **PARTICLE CHAOS** | GPU particles pushed by touch and curl-noise |
 
-**Result**:
-- ✅ **Live IR image visible** (hand = bright regions) → IR path viable
-- ❌ **Nothing / policy error** → Switch to LEAP Z or redesign sensing
-
-If PASS, note: `IMAGE EVENT w=512 h=512 bpp=1 bytes=262144` and `spike_frame.pgm` written.
-
-### Daily Start (On-Rig Testing)
-
-**Built by Doopler Studio & Armado Frezze** for interactive installations that require precise touch detection and visual feedback.
-
-#### 1. Plug in Leap Controller 2 (USB)
-```bash
-./check-leap.sh
-# Must print: DEVICE(S) CONNECTED
-# If "NO DEVICE": fix USB cable, then re-run
-```
-
-#### 2. Start the Full Application
-```bash
-./run.sh
-# Starts bridge (IR + TUIO) + Vite dev server
-# Opens http://localhost:8000/
-# Bridge auto-stops when you Ctrl+C the server
-```
-
-#### 3. Select Source & Calibrate
-In the web UI:
-
-**Source Selection** (dropdown):
-- `MOUSE` – Develop without hardware
-- `LEAP IR` – IR blob detection (primary)
-- `LEAP Z` – Leap hand tracking + Z threshold (backup; requires WS :6437)
-
-**LEAP IR Calibration**:
-1. **Capture Background** → Click "CAPTURE BG" with no fingers touching
-   - Stores empty IR frame for background subtraction
-2. **Calibrate Corners** → Click "TEST GRID", then drag the 4 corner pins on the IR preview
-   - Match the acrylic bounds
-3. **Tune Detection**:
-   - **Threshold**: How bright a blob must be (0–255; higher = stricter)
-   - **Min/Max Area**: Filter by pixel count
-   - **Blur / Erosion**: Morphological filtering to reduce noise
-   - **Mirror X/Y**: Flip if image is reversed
-   - **Undistort** + **K1/K2**: Fisheye lens correction (if edges are warped)
-
-#### 4. Point TUIO Client
-Direct your TUIO consumer (e.g., TUIO Mouse) to `127.0.0.1:3333`.
-
-### Development Server
-```bash
-npm run dev
-# Hot Module Replacement (HMR) enabled
-# Changes auto-reload in browser
-```
-
-### Production Build
-```bash
-npm run build
-npm run preview --port 8000
-# Serves dist/ locally for testing
-# Or deploy dist/ to any static HTTP server
-```
+Each effect exposes its own tunable parameters (built dynamically under the dropdown) and persists them per effect.
 
 ---
 
-## Development Commands
+## Sources & Calibration
 
-### Build & Test
+Pick a source from the **SOURCE** dropdown:
+
+- **MOUSE** — develop without hardware.
+- **LEAP IR** — IR blob detection through the Leap (primary; needs the bridge).
+- **PS EYE** — PlayStation Eye IR camera via the bridge *(optional; see Tauri section)*.
+- **IR CAMERA** — a generic IR webcam via `getUserMedia`.
+- **LEAP Z** — Leap hand tracking + Z threshold (backup).
+
+**LEAP IR / IR CAMERA calibration:**
+1. **CAPTURE BG** — with nothing touching the surface, store an empty frame for background subtraction.
+2. **Calibrate the ROI** — drag the 4 corner handles on the IR preview to match the acrylic bounds.
+3. **Tune detection** — `THRESHOLD` (blob brightness), `MIN/MAX AREA` (pixel-count filter), `BLUR` / `EROSION` (denoise), `MIRROR X/Y` (flip), `FISHEYE` + `K1/K2` (lens correction).
+4. **Point your TUIO client** at `127.0.0.1:3333`.
+
+---
+
+## Commands
+
 ```bash
-npm run typecheck      # TypeScript strict mode
-npm run build          # Production bundle
-npm test               # 22 unit tests
-npm run dev            # Development server with HMR
-npm run preview        # Preview production build locally
+npm run dev            # dev server with HMR (http://localhost:8000/)
+npm run build          # production bundle → dist/
+npm run preview        # serve dist/ locally
+npm run typecheck      # TypeScript strict type-check
+npm test               # tsc + 45 unit tests (node --test)
+./run.sh               # bridge + dev server together
+./check-leap.sh        # verify the Leap device is connected
+./spike.sh             # Phase 0: raw IR proof-of-concept
+
+.venv/bin/python -m pytest bridge/test_tuio.py -q   # 3 TUIO encoding tests
 ```
 
-### Tests (22 Total)
-```bash
-npm test
-# Runs: TypeScript type-check + Node test runner with --experimental-strip-types
-
-# Unit tests cover:
-# - Background (scaling, aspect ratios)
-# - Blobs (detection, area filtering)
-# - Homography (camera ↔ surface mapping)
-# - IR preprocessing (background subtraction)
-# - Leap Z (finger extraction, height mapping)
-# - Touch source (mouse input, coordinate normalization)
-# - Tracking (temporal ID reuse, state transitions)
-# - UI overlay (grid, keyboard nudge)
-# - Warp GL (corner offsets, perspective)
-```
-
-### Python Tests
-```bash
-.venv/bin/python -m pytest bridge/test_tuio.py -q
-# 3 TUIO encoding tests
-```
+The **45 unit tests** cover the pure logic: background, blobs, homography, IR pipeline/preprocess/provider, IR source, Leap-Z, touch source, tracking, UI overlay, warp, and the effect registry.
 
 ---
 
 ## Controls & Keyboard
 
-### UI Panel
-- **FIT SCREEN** – Canvas fills viewport (checked: override manual width/height)
-- **TEST GRID** – Overlay calibration grid + corner anchors
-- **RESET ANCHORS** – Set all 4 pins to identity (0 offset)
-- **Canvas SIZE** – Manual width/height sliders
-- **SOURCE** – Toggle MOUSE / LEAP IR / LEAP Z
-- **IMAGE** – Load background image/video, scale, rotate
-- **WATER** – Intensity, viscosity, radius
-- **PINS** – Per-corner X/Y offsets (→ keystone correction)
-- **LEAP IR** – Threshold, area, blur, erosion, undistort K1/K2, mirror
+### UI panel
+- **FIT SCREEN** — canvas fills the viewport (overrides manual width/height).
+- **TEST GRID** — overlay the calibration grid + corner anchors.
+- **RESET ANCHORS** — set all 4 pins back to zero offset.
+- **CANVAS** — manual width/height sliders.
+- **SOURCE** — MOUSE / LEAP IR / PS EYE / IR CAMERA / LEAP Z.
+- **IMAGE** — load a background image/video; scale X/Y; rotate.
+- **EFFECT** — pick 1 of 6 effects; tune its parameters.
+- **PINS** — per-corner X/Y offsets (keystone correction).
+- **IR DETECT** — threshold, area, blur, erosion, mirror, fisheye K1/K2.
 
-### Keyboard (Projection Mode)
-- **H** – Hide/show UI panel
-- **F** – Toggle fullscreen
-- **Esc** – Exit fullscreen + show UI
-- **Arrow keys** → Nudge selected corner ±1px
-- **Shift + Arrow** → Nudge ±10px
-- **Click corner pin** → Select for nudging
+### Keyboard (projection mode)
+- **H** — hide/show the UI panel
+- **F** — toggle fullscreen · **Esc** — exit fullscreen + show UI
+- **1–6** — select effect
+- **G** — toggle the calibration grid
+- **Click a corner pin**, then **arrow keys** to nudge ±1px (**Shift** = ±10px)
 
 ---
 
 ## Configuration
 
-### Local Storage
-Control values (sliders, checkboxes, ROI) saved to `localStorage` under key `vp_settings`.
+### Local storage
+Control values (sliders, checkboxes, ROI, active effect) persist to `localStorage` under key `vp_settings`.
 ```javascript
-localStorage.getItem('vp_settings')  // View all settings as JSON
-localStorage.removeItem('vp_settings')  // Reset to defaults
+localStorage.getItem('vp_settings')     // view all settings as JSON
+localStorage.removeItem('vp_settings')  // reset to defaults
 ```
 
-### TUIO Output
-- **Protocol**: TUIO 1.1 (binary OSC bundles)
-- **Port**: UDP 3333
-- **Messages**: `/tuio/2Dcur` (touch), `/tuio/fseq` (frame sequence)
-- **Client**: e.g., TUIO Mouse, MaxMSP, Processing, Custom OSC listener
+### TUIO output
+- **Protocol**: TUIO 1.1 (binary OSC bundles) · **Port**: UDP 3333
+- **Messages**: `/tuio/2Dcur` (touches), `/tuio/fseq` (frame sequence)
+- **Clients**: TUIO Mouse, Max/MSP, Processing, or any OSC listener
 
-### Mounting Notes
-- Mount Leap ~15–30 cm behind acrylic so fingers are in focus
-- IR-pass filter on Leap blocks visible projector light → no pollution
-- Ensure stable USB power (avoid brownouts)
+### Mounting notes
+- Mount the Leap ~15–30 cm behind the acrylic so fingers are in focus.
+- The IR-pass filter blocks the projector's visible light → no pollution.
+- Use stable USB power (avoid brownouts).
+
+---
+
+## Standalone macOS App (Tauri)
+
+The app can ship as a double-clickable `.app` that bundles the Leap bridge and runs the WebGL frontend fullscreen. The frontend is unchanged — it still talks to the bridge over `ws://localhost:7681`; Tauri only owns the window and the bridge process lifecycle.
+
+```bash
+npm run tauri:dev        # vite + webview; backend spawns the bridge sidecar
+npm run build-bridge     # freeze bridge with PyInstaller → src-tauri/binaries/…
+npm run tauri:build      # vite build + .app + .dmg (host arch)
+```
+
+The bridge supports `--device leap|pseye|none` (default `leap`); the frontend also switches the device live via a WS control message. **PS Eye support is optional** (the bridge guards the imports):
+```bash
+brew install libusb
+.venv/bin/pip install -r bridge/requirements-pseye.txt   # cython + numpy + pseyepy
+```
+
+For signing/notarization, set the Developer ID identity in `tauri.conf.json` and export `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID`.
 
 ---
 
 ## Troubleshooting
 
-### Phase 0: No IR Image
-1. ✅ Ultraleap service running? (macOS: System Settings → Leap Motion)
-2. ✅ Controller 2 plugged in? (check `./check-leap.sh`)
-3. ✅ Policy flags set? (leap-bridge.py should log: "set_policy_flags success")
-4. ✅ Python 3.12 + LeapC bindings? (run `./setup.sh` again)
+**No IR image (Phase 0)** — confirm the Ultraleap service is running, `./check-leap.sh` prints `DEVICE(S) CONNECTED`, the Controller 2 USB is plugged in, and `./setup.sh` installed the Python 3.12 bindings.
 
-### Bridge Connection Timeout
-```bash
-.venv/bin/python bridge/leap-bridge.py
-# Watch stderr for LeapC errors
-# If "NO DEVICE", reconnect USB + restart Ultraleap service
-```
+**Bridge connection fails** — run `.venv/bin/python bridge/leap-bridge.py` and watch stderr for LeapC errors; reconnect USB + restart the Ultraleap service.
 
-### TUIO Not Arriving
-1. Verify client listening on `127.0.0.1:3333`
-2. Check firewall: `sudo lsof -i :3333`
-3. Test with: `nc -u -l 3333` (should see binary data)
-4. Ensure bridge is running: check terminal for "TUIO sender ready"
+**TUIO not arriving** — verify the client listens on `127.0.0.1:3333`, the firewall isn't blocking UDP 3333 (`sudo lsof -i :3333`), and the bridge logs "TUIO sender ready".
 
-### Touches Not Detected
-**LEAP IR**:
-- Click "CAPTURE BG" first (saves empty frame)
-- Increase threshold if too few blobs
-- Decrease minArea if missing small touches
-- Check MIRROR X/Y if image is flipped
+**Touches not detected (LEAP IR)** — click **CAPTURE BG** first; raise `THRESHOLD` if too many blobs; lower `MIN AREA` for small touches; toggle **MIRROR X/Y** if the image is flipped.
 
-**LEAP Z**:
-- Hand must be in interaction box (~25 cm in front)
-- Adjust thresh (depth) + zoomX/Z in code
-
-### High CPU / Low FPS
-- Check water intensity (high = more iterations)
-- Reduce blob detection parameters (blur, minArea)
-- Profile with Chrome DevTools (Performance tab)
+**Low FPS** — reduce blur / detection work; profile with Chrome DevTools (Performance).
 
 ---
 
 ## Technology Stack
 
-- **Frontend**: TypeScript 5.7, Vite 6, WebGL (water + warp)
+- **Frontend**: TypeScript 5.7, Vite 6, WebGL (effects + keystone warp), zero runtime dependencies
 - **Backend**: Python 3.12, LeapC FFI, websockets, python-osc
-- **Testing**: Node native test runner (--experimental-strip-types)
-- **Build**: Vite (ES2022, tree-shake, minify)
-- **Target**: ES2022 + DOM APIs
-- **Communication**: WebSocket (IR), UDP/OSC (TUIO)
+- **Desktop**: Tauri 2 (optional macOS `.app`)
+- **Testing**: Node native test runner (`--experimental-strip-types`)
+- **Communication**: WebSocket (IR frames), UDP/OSC (TUIO touches)
 
 ---
+## Links
 
-## Performance
-
-- **Water GPU**: Real-time on Apple Silicon + Intel (60 FPS)
-- **Blob detection**: ~100ms per 512×512 frame (CPU)
-- **Tracking overhead**: <5ms per frame
-- **Browser refresh**: 60 FPS (requestAnimationFrame)
-- **TUIO broadcast**: <1ms per frame
-
----
-
-## Project History & Phase 0 Result
-
-**2026-06-18 – Phase 0 GATE PASSED ✅**
-- Controller 2 (`LE510000200000A8DB…`) connected
-- `./spike.sh` delivered raw IR images via LeapC
-- Output: `IMAGE EVENT w=512 h=512 bpp=1 bytes=262144`
-- Result: IR image viability confirmed (`spike_frame.pgm` captured)
-- Conclusion: IR path is viable; build on LeapImageSource
-
-**TypeScript Migration – 2026-06-21 ✅**
-- Migrated all `.js` files to TypeScript
-- 22 unit tests passing
-- Vite build succeeds
-- Zero type errors
-
----
-
-## Credits & Attribution
-
-**VIDEOPLASTER 02** is a project by **Armado Frezze** and **Doopler Studio**, developed for interactive rear-projection installations combining Leap Motion Controller 2 IR sensing with GPU-accelerated graphics and TUIO output.
-
-- **Concept & Design**: Armado Frezze
-- **Development**: Full-stack TypeScript/Python implementation by Armado Frezze
-- **Studio**: Doopler Studio – Digital arts & interactive installations
-
-**Links**:
-- [Doopler Studio](https://www.doopler.studio)
-- [Armado Frezze](https://github.com/armadofrezze)
-- See **[CREDITS.md](./CREDITS.md)** for detailed attribution and development timeline
-
----
-
-## Links & References
-
-- [Leap Motion Controller 2 Docs](https://leap2.ultraleap.com/)
-- [Leap C API Bindings](https://github.com/ultraleap/leapc-python-bindings)
-- [TUIO 1.1 Protocol](http://www.tuio.org/)
-- [WebGL Water Simulation](https://tympanus.net/codrops/2013/08/13/webgl-water-simulation/)
-- [Vite Documentation](https://vitejs.dev/)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-
-
+- [Leap Motion Controller 2](https://leap2.ultraleap.com/) · [LeapC Python bindings](https://github.com/ultraleap/leapc-python-bindings)
+- [TUIO 1.1 Protocol](http://www.tuio.org/) · [Vite](https://vitejs.dev/) · [TypeScript](https://www.typescriptlang.org/docs/)

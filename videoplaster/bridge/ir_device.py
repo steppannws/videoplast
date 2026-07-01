@@ -127,8 +127,13 @@ try:
     import numpy as _np
     import pseyepy as _pseyepy
     _HAVE_PSEYE = True
-except ImportError:
+    _PSEYE_IMPORT_ERR = None
+except ImportError as _e:
+    # pseyepy may BE installed yet still fail here: its __init__ force-imports
+    # ui (tkinter, Pillow) and io (h5py). Keep the real reason so start() can
+    # report it instead of the misleading "not installed".
     _HAVE_PSEYE = False
+    _PSEYE_IMPORT_ERR = _e
 
 
 def frame_to_gray(frame):
@@ -155,7 +160,7 @@ class PsEyeDevice(IrDevice):
         self._running = False
     def start(self, on_frame: OnFrame) -> None:
         if not _HAVE_PSEYE:
-            print("[pseye] pseyepy/numpy not installed — no frames")
+            print(f"[pseye] import failed — no frames: {_PSEYE_IMPORT_ERR!r}")
             return
         self._on_frame = on_frame
         self._running = True
