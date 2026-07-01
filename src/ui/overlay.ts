@@ -2,13 +2,13 @@
 // Projection-mode overlay + keyboard layer. Pure helpers are exported for unit tests;
 // installOverlay() keyboard/DOM wiring takes its app hooks as callbacks.
 import { clamp } from "../util/math.ts";
+import { PIN_LIMIT } from "../config/controls.ts";
 import type { Axis } from "../types/index.ts";
 
-const PIN_MIN = -400, PIN_MAX = 400;
-export const clampPin = (v: number): number => clamp(v, PIN_MIN, PIN_MAX);
+export const clampPin = (v: number): number => clamp(v, -PIN_LIMIT, PIN_LIMIT);
 
 // Pure: new offset for one axis after an arrow nudge.
-// dir: -1 or +1. shift: true => 10px step, else 1px. Result clamped to [-400,400].
+// dir: -1 or +1. shift: true => 10px step, else 1px. Result clamped to ±PIN_LIMIT.
 export function nudgeAxis(value: number, dir: -1 | 1, shift: boolean): number {
   return clampPin(value + dir * (shift ? 10 : 1));
 }
@@ -59,6 +59,7 @@ export interface InstallOverlayOpts {
   isEditing: () => boolean;
   onNudge: (axis: Axis, dir: -1 | 1, shift: boolean) => void;
   onToggleGrid: () => void;
+  onToggleWarp?: () => void;
   onSelectEffect?: (index: number) => void;
   persist: (key: string, value: unknown) => void;
   initialHidden: boolean;
@@ -67,7 +68,7 @@ export interface InstallOverlayOpts {
 
 // Wire global projection keys. App hooks are injected so this stays DOM-light.
 export function installOverlay(opts: InstallOverlayOpts): void {
-  const { panel, body, isEditing, onNudge, onToggleGrid, onSelectEffect, persist, initialHidden, idleMs = 15000 } = opts;
+  const { panel, body, isEditing, onNudge, onToggleGrid, onToggleWarp, onSelectEffect, persist, initialHidden, idleMs = 15000 } = opts;
   let hidden = !!initialHidden;
   const applyHidden = () => { panel.classList.toggle("hidden", hidden); };  // cursor handled by idle timer below
   applyHidden();
@@ -97,6 +98,7 @@ export function installOverlay(opts: InstallOverlayOpts): void {
     if (k === "h") { hidden = !hidden; applyHidden(); persist("uiHidden", hidden); }
     else if (k === "f") { toggleFullscreen(); }
     else if (k === "g") { onToggleGrid(); }
+    else if (k === "w") { if (onToggleWarp) onToggleWarp(); }
     else if (ARROW[e.key]) { e.preventDefault(); const [axis, dir] = ARROW[e.key]; onNudge(axis, dir, e.shiftKey); }
   });
 }

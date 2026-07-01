@@ -1,25 +1,16 @@
 // src/gl/warp-gl.ts
-import { computeH, inv3 } from "./homography.ts";
+// Media warp: a 4×4 control-point grid rendered as a fine Catmull-Rom mesh. The source
+// texture is sampled with per-vertex UVs; the grid deforms the destination positions.
+import { gridFromOffsets, evalGrid } from "./quad.ts";
 import type { Pt } from "./homography.ts";
-import type { PinKey, Axis } from "../types/index.ts";
+import type { Grid } from "./quad.ts";
 
-type Corners = Record<PinKey, { x: number; y: number }>;
+const N = 24; // tessellation subdivisions per axis
 
-const VS = `attribute vec2 a_pos; varying vec2 v_uv; void main(){ v_uv=(a_pos+1.0)*0.5; gl_Position=vec4(a_pos,0.,1.); }`;
-const FS = `precision mediump float; uniform sampler2D u_tex; uniform mat3 u_Hinv; uniform vec2 u_res; varying vec2 v_uv;
-void main(){ vec2 fp=vec2(v_uv.x*u_res.x,(1.0-v_uv.y)*u_res.y); vec3 h=u_Hinv*vec3(fp,1.0); vec2 sp=h.xy/h.z;
-  vec2 uv=vec2(sp.x/u_res.x,1.0-sp.y/u_res.y);
-  if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0) gl_FragColor=vec4(0,0,0,1); else gl_FragColor=texture2D(u_tex,uv); }`;
-
-// Pure: destination corner positions = base corners + per-corner pixel offsets.
-export function cornerPositions(w: number, h: number, off: Corners): Corners {
-  return {
-    tl: { x: 0 + off.tl.x, y: 0 + off.tl.y },
-    tr: { x: w + off.tr.x, y: 0 + off.tr.y },
-    br: { x: w + off.br.x, y: h + off.br.y },
-    bl: { x: 0 + off.bl.x, y: h + off.bl.y },
-  };
-}
+const VS = `attribute vec2 a_clip; attribute vec2 a_uv; varying vec2 v_uv;
+void main(){ v_uv=a_uv; gl_Position=vec4(a_clip,0.0,1.0); }`;
+const FS = `precision mediump float; uniform sampler2D u_tex; varying vec2 v_uv;
+void main(){ gl_FragColor = texture2D(u_tex, vec2(v_uv.x, 1.0 - v_uv.y)); }`;
 
 function mk(gl: WebGLRenderingContext, t: number, s: string): WebGLShader {
   const sh = gl.createShader(t);
@@ -29,15 +20,33 @@ function mk(gl: WebGLRenderingContext, t: number, s: string): WebGLShader {
   return sh;
 }
 
+// Static triangle indices for an (N+1)×(N+1) vertex grid.
+function buildIndices(): Uint16Array {
+  const idx: number[] = [];
+  const row = N + 1;
+  for (let b = 0; b < N; b++) for (let a = 0; a < N; a++) {
+    const v00 = b * row + a, v10 = v00 + 1, v01 = v00 + row, v11 = v01 + 1;
+    idx.push(v00, v10, v01, v10, v11, v01);
+  }
+  return new Uint16Array(idx);
+}
+
+const zeros = (): Pt[] => Array.from({ length: 16 }, () => ({ x: 0, y: 0 }));
+
 export class WarpGL {
   gl: WebGLRenderingContext;
   w: number;
   h: number;
   prog: WebGLProgram;
-  quad: WebGLBuffer;
-  uHinv: WebGLUniformLocation | null;
-  uRes: WebGLUniformLocation | null;
-  off: Corners;
+  vbo: WebGLBuffer;
+  ibo: WebGLBuffer;
+  aClip: number;
+  aUv: number;
+  uTex: WebGLUniformLocation | null;
+  indexCount: number;
+  verts: Float32Array;
+  // Per-control-point pixel offsets from the base grid; all zero = identity (flat rect).
+  off: Pt[];
   constructor(gl: WebGLRenderingContext, w: number, h: number) {
     this.gl = gl; this.w = w; this.h = h;
     const prog = gl.createProgram();
@@ -46,30 +55,46 @@ export class WarpGL {
     gl.attachShader(prog, mk(gl, gl.VERTEX_SHADER, VS));
     gl.attachShader(prog, mk(gl, gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error("warp link: " + gl.getProgramInfoLog(prog));
-    const quad = gl.createBuffer();
-    if (!quad) throw new Error("warp: createBuffer failed");
-    this.quad = quad;
-    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
-    this.uHinv = gl.getUniformLocation(prog, "u_Hinv"); this.uRes = gl.getUniformLocation(prog, "u_res");
-    // per-corner pixel offsets from the base corners; all zero = identity (no keystone)
-    this.off = { tl:{x:0,y:0}, tr:{x:0,y:0}, br:{x:0,y:0}, bl:{x:0,y:0} };
+    const vbo = gl.createBuffer(), ibo = gl.createBuffer();
+    if (!vbo || !ibo) throw new Error("warp: createBuffer failed");
+    this.vbo = vbo; this.ibo = ibo;
+    const indices = buildIndices();
+    this.indexCount = indices.length;
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    this.aClip = gl.getAttribLocation(prog, "a_clip");
+    this.aUv = gl.getAttribLocation(prog, "a_uv");
+    this.uTex = gl.getUniformLocation(prog, "u_tex");
+    this.verts = new Float32Array((N + 1) * (N + 1) * 4);
+    this.off = zeros();
   }
-  setPinOffset(k: PinKey, axis: Axis, v: number): void { this.off[k][axis] = v; }
+  setPointOffset(idx: number, x: number, y: number): void { this.off[idx] = { x, y }; }
+  reset(): void { this.off = zeros(); }
   resize(w: number, h: number): void { this.w = w; this.h = h; }
-  cornerPositions(): Corners { return cornerPositions(this.w, this.h, this.off); }
+  points(): Grid { return gridFromOffsets(this.off, this.w, this.h); }
   draw(srcTex: WebGLTexture): void {
-    const gl = this.gl; gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, this.w, this.h);
-    gl.useProgram(this.prog); gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
-    const loc = gl.getAttribLocation(this.prog, "a_pos"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    const src: Pt[] = [{x:0,y:0},{x:this.w,y:0},{x:this.w,y:this.h},{x:0,y:this.h}];
-    const c = this.cornerPositions();
-    const dst: Pt[] = [c.tl, c.tr, c.br, c.bl];
-    const H = computeH(src, dst), Hi = inv3(H);
-    gl.uniformMatrix3fv(this.uHinv, false, [Hi[0],Hi[3],Hi[6],Hi[1],Hi[4],Hi[7],Hi[2],Hi[5],Hi[8]]);
-    gl.uniform2f(this.uRes, this.w, this.h);
+    const gl = this.gl, w = this.w, h = this.h;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h);
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    const grid = this.points();
+    const v = this.verts;
+    let o = 0;
+    for (let b = 0; b <= N; b++) for (let a = 0; a <= N; a++) {
+      const u = a / N, vv = b / N;
+      const p = evalGrid(grid, u, vv);
+      v[o++] = 2 * p.x / w - 1;
+      v[o++] = 1 - 2 * p.y / h;
+      v[o++] = u;
+      v[o++] = vv;
+    }
+    gl.useProgram(this.prog);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, srcTex);
-    gl.uniform1i(gl.getUniformLocation(this.prog, "u_tex"), 0);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.uniform1i(this.uTex, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, v, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(this.aClip); gl.vertexAttribPointer(this.aClip, 2, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(this.aUv); gl.vertexAttribPointer(this.aUv, 2, gl.FLOAT, false, 16, 8);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
+    gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
   }
 }
