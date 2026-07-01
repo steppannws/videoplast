@@ -10,10 +10,10 @@ test("nudgeAxis 1px and 10px steps", () => {
   assert.equal(nudgeAxis(5, -1, true), -5);
 });
 
-test("nudgeAxis clamps to [-400,400]", () => {
-  assert.equal(nudgeAxis(400, 1, false), 400);
-  assert.equal(nudgeAxis(-400, -1, true), -400);
-  assert.equal(nudgeAxis(395, 1, true), 400);
+test("nudgeAxis clamps to ±PIN_LIMIT (2000)", () => {
+  assert.equal(nudgeAxis(2000, 1, false), 2000);
+  assert.equal(nudgeAxis(-2000, -1, true), -2000);
+  assert.equal(nudgeAxis(1995, 1, true), 2000);
 });
 
 test("gridLines spacing, center, corners", () => {

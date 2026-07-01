@@ -3,13 +3,13 @@
 // pin sliders / persisted offsets in sync with the warp.
 import { bindNumber, bindBool, saveSetting, getSetting } from "./persist.ts";
 import { drawGrid, nudgeAxis } from "./overlay.ts";
-import { PIN_KEYS, AXES } from "../config/controls.ts";
+import { PIN_KEYS, AXES, PIN_LIMIT } from "../config/controls.ts";
 import { clamp } from "../util/math.ts";
 import type { WarpGL } from "../gl/warp-gl.ts";
 import type { PinKey, Axis } from "../types/index.ts";
 
 const PIN_HIT = 26;
-const clampOff = (v: number): number => clamp(v, -400, 400);
+const clampOff = (v: number): number => clamp(v, -PIN_LIMIT, PIN_LIMIT);
 
 export class PinController {
   private readonly pinCtx: CanvasRenderingContext2D | null;

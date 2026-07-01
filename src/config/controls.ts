@@ -9,6 +9,10 @@ import { DET_DEFAULTS, UNDIST_DEFAULTS, CANVAS_DEFAULTS, TOUCHMAP_DEFAULTS } fro
 export const PIN_KEYS: readonly PinKey[] = ["tl", "tr", "br", "bl"];
 export const AXES: readonly Axis[] = ["x", "y"];
 
+// Max magnitude of a per-corner pin offset (px). Wide enough to move the content quad
+// across the frame and scale it up ~3×, not just nudge keystone.
+export const PIN_LIMIT = 2000;
+
 // The numeric DetOpt fields (everything except the boolean `invert`).
 export type NumericDetKey = "threshold" | "minArea" | "maxArea" | "blurAmt" | "erosionAmt" | "brightness" | "contrast" | "motionRate";
 
@@ -41,8 +45,8 @@ const slider = (
 const pinRow = (k: PinKey) => ({
   items: [
     { kind: "slabel", text: `Pin ${k.toUpperCase()}` } as Item,
-    slider(`${k}x`, "X", -400, 400, 1, 0, "px"),
-    slider(`${k}y`, "Y", -400, 400, 1, 0, "px"),
+    slider(`${k}x`, "X", -PIN_LIMIT, PIN_LIMIT, 1, 0, "px"),
+    slider(`${k}y`, "Y", -PIN_LIMIT, PIN_LIMIT, 1, 0, "px"),
   ],
 });
 
