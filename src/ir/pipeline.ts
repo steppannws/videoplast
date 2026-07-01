@@ -4,14 +4,23 @@ import { findBlobs } from "./blobs.ts";
 import { BlobTracker } from "./tracking.ts";
 import { subtractBackground, applyBrightnessContrast } from "./preprocess.ts";
 import { buildUndistMap, applyUndist } from "./undistort.ts";
-import { DET_DEFAULTS, UNDIST_DEFAULTS, MIRROR_DEFAULTS } from "../config/defaults.ts";
-import type { DetOpt, UndistOpt, Roi, MirrorOpt, DetBlob, TouchEv } from "../types/index.ts";
+import { DET_DEFAULTS, UNDIST_DEFAULTS, MIRROR_DEFAULTS, TOUCHMAP_DEFAULTS } from "../config/defaults.ts";
+import type { DetOpt, UndistOpt, Roi, MirrorOpt, TouchMap, DetBlob, TouchEv } from "../types/index.ts";
 
 // Pure: blob center (image px) -> surface UV via an axis-aligned normalized rectangle.
 export function roiMap(cx: number, cy: number, w: number, h: number, roi: Roi): { u: number; v: number } {
   const u = (cx / w - roi.x) / roi.w;
   const v = (cy / h - roi.y) / roi.h;
   return { u, v };
+}
+
+// Pure: translate + per-axis scale a UV about the centre. Fine-tunes touch alignment
+// with the projected canvas without touching the detection ROI.
+export function applyTouchMap(u: number, v: number, tm: TouchMap): { u: number; v: number } {
+  return {
+    u: (u - 0.5) * tm.scaleX + 0.5 + tm.offX,
+    v: (v - 0.5) * tm.scaleY + 0.5 + tm.offY,
+  };
 }
 
 // Pure: RGBA copy mirrored horizontally (flipX) and/or vertically (flipY).
@@ -39,6 +48,7 @@ export class IrTouchPipeline {
   undist: UndistOpt = { ...UNDIST_DEFAULTS, map: null };
   roi: Roi = { x: 0, y: 0, w: 1, h: 1 };
   mirror: MirrorOpt = { ...MIRROR_DEFAULTS };
+  touchMap: TouchMap = { ...TOUCHMAP_DEFAULTS };
   tracker = new BlobTracker({ maxDist: 0.08 });
   previewCb: ((rgba: Uint8ClampedArray, bin: Uint8Array, w: number, h: number, blobs: DetBlob[]) => void) | null = null;
   onEvent: (ev: TouchEv) => void = () => {};
@@ -83,7 +93,11 @@ export class IrTouchPipeline {
     const detIn = applyBrightnessContrast(base, w * h, this.opt.brightness, this.opt.contrast);
     const { blobs, bin } = findBlobs({ data: detIn, width: w, height: h }, this.opt);
     const mapped = blobs
-      .map((b) => { const { u, v } = roiMap(b.cx, b.cy, w, h, this.roi); return { x: u, y: v, strength: Math.min(1, b.bright/255) }; })
+      .map((b) => {
+        const { u, v } = roiMap(b.cx, b.cy, w, h, this.roi);
+        const t = applyTouchMap(u, v, this.touchMap);
+        return { x: t.u, y: t.v, strength: Math.min(1, b.bright/255) };
+      })
       .filter((pt) => pt.x>=0 && pt.x<=1 && pt.y>=0 && pt.y<=1);
     for (const ev of this.tracker.update(mapped)) this.onEvent(ev);
     if (this.previewCb) this.previewCb(detIn, bin, w, h, blobs);

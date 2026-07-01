@@ -1,11 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { IrTouchPipeline, roiMap, flipImage } from "./pipeline.ts";
+import { IrTouchPipeline, roiMap, flipImage, applyTouchMap } from "./pipeline.ts";
 
 test("roiMap maps image px to surface uv inside a sub-rect", () => {
   const { u, v } = roiMap(50, 25, 100, 100, { x: 0, y: 0, w: 0.5, h: 0.5 });
   assert.ok(Math.abs(u - 1.0) < 1e-9);
   assert.ok(Math.abs(v - 0.5) < 1e-9);
+});
+
+test("applyTouchMap: identity, offset, and centre-anchored scale", () => {
+  const id = applyTouchMap(0.5, 0.5, { offX: 0, offY: 0, scaleX: 1, scaleY: 1 });
+  assert.ok(Math.abs(id.u - 0.5) < 1e-9 && Math.abs(id.v - 0.5) < 1e-9);
+  const off = applyTouchMap(0.5, 0.5, { offX: 0.1, offY: -0.2, scaleX: 1, scaleY: 1 });
+  assert.ok(Math.abs(off.u - 0.6) < 1e-9 && Math.abs(off.v - 0.3) < 1e-9);
+  // scale pivots at centre: 0.5 stays, edges move
+  const sc = applyTouchMap(1.0, 0.5, { offX: 0, offY: 0, scaleX: 2, scaleY: 1 });
+  assert.ok(Math.abs(sc.u - 1.5) < 1e-9 && Math.abs(sc.v - 0.5) < 1e-9);
 });
 
 test("flipImage with no flips returns the same array ref", () => {

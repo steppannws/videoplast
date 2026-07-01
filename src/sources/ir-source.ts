@@ -3,7 +3,7 @@
 import { TouchSource } from "./touch-source.ts";
 import { IrTouchPipeline } from "../ir/pipeline.ts";
 import type { IrFrameProvider } from "../ir/provider.ts";
-import type { DetOpt, UndistOpt, MirrorOpt, Roi, DetBlob } from "../types/index.ts";
+import type { DetOpt, UndistOpt, MirrorOpt, TouchMap, Roi, DetBlob } from "../types/index.ts";
 
 export class IrSource extends TouchSource {
   readonly pipeline = new IrTouchPipeline();
@@ -19,6 +19,7 @@ export class IrSource extends TouchSource {
   get opt(): DetOpt { return this.pipeline.opt; }
   get undist(): UndistOpt { return this.pipeline.undist; }
   get mirror(): MirrorOpt { return this.pipeline.mirror; }
+  get touchMap(): TouchMap { return this.pipeline.touchMap; }
   get roi(): Roi { return this.pipeline.roi; }
   setRoi(r: Roi): void { this.pipeline.setRoi(r); }
   captureBackground(): void { this.pipeline.captureBackground(); }

@@ -7,11 +7,11 @@ import { SOURCES } from "./source-registry.ts";
 import type { SourceInstance, SourceCtx } from "./source-registry.ts";
 import { CameraFrameProvider } from "../ir/camera-frame-provider.ts";
 import { bindSelect, bindNumber, bindBool, getSetting, saveSetting } from "../ui/persist.ts";
-import { DET_DEFAULTS, UNDIST_DEFAULTS, MIRROR_DEFAULTS } from "../config/defaults.ts";
-import { DET_SLIDERS } from "../config/controls.ts";
+import { DET_DEFAULTS, UNDIST_DEFAULTS, MIRROR_DEFAULTS, TOUCHMAP_DEFAULTS } from "../config/defaults.ts";
+import { DET_SLIDERS, TOUCHMAP_SLIDERS } from "../config/controls.ts";
 import type { NumericDetKey } from "../config/controls.ts";
 import type { IrFrameProvider } from "../ir/provider.ts";
-import type { TouchEv, Roi, DetOpt, Axis } from "../types/index.ts";
+import type { TouchEv, Roi, DetOpt, TouchMap, Axis } from "../types/index.ts";
 
 export interface SourceManagerDeps {
   glCanvas: HTMLCanvasElement;
@@ -27,6 +27,7 @@ export class SourceManager {
   private readonly detOpt: DetOpt = { ...DET_DEFAULTS };
   private readonly undistOpt = { ...UNDIST_DEFAULTS };
   private readonly mirrorOpt = { ...MIRROR_DEFAULTS };
+  private readonly touchMapOpt: TouchMap = { ...TOUCHMAP_DEFAULTS };
 
   constructor(private readonly deps: SourceManagerDeps) {
     this.mouse = new MouseTouchSource(deps.glCanvas);
@@ -64,6 +65,9 @@ export class SourceManager {
     bindBool("undistort", (b) => this.setUndistOn(b));
     bindNumber("undistK1", (n) => this.setUndistK("k1", n), (n) => n.toFixed(2));
     bindNumber("undistK2", (n) => this.setUndistK("k2", n), (n) => n.toFixed(2));
+    for (const t of TOUCHMAP_SLIDERS) {
+      bindNumber(t.id, (n) => this.setTouchMap(t.key, n), (n) => n.toFixed(3), parseFloat);
+    }
     this.wireCamera();
   }
 
@@ -75,6 +79,7 @@ export class SourceManager {
     Object.assign(src.undist, this.undistOpt);
     src.undist.map = null;
     Object.assign(src.mirror, this.mirrorOpt);
+    Object.assign(src.touchMap, this.touchMapOpt);
     if (restoreRoi) { const roi = getSetting<Roi>("roi"); if (roi) src.setRoi(roi); }
     src.statusCb = (s) => this.deps.setStatus(`${prefix}: ${s}`);
     this.deps.calibrate(src);
@@ -89,6 +94,11 @@ export class SourceManager {
   private setMirror(axis: Axis, b: boolean): void {
     this.mirrorOpt[axis] = b;
     if (this.irSrc) this.irSrc.mirror[axis] = b;
+  }
+
+  private setTouchMap(key: keyof TouchMap, value: number): void {
+    this.touchMapOpt[key] = value;
+    if (this.irSrc) this.irSrc.touchMap[key] = value;
   }
 
   private setUndistOn(b: boolean): void {

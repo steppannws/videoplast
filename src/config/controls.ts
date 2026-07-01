@@ -3,8 +3,8 @@
 // markup in index.html, with slider defaults sourced from config/defaults.ts so a
 // value is never duplicated between TS state and HTML.
 import type { SectionCfg, Item } from "../ui/control-factory.ts";
-import type { PinKey, Axis } from "../types/index.ts";
-import { DET_DEFAULTS, UNDIST_DEFAULTS, CANVAS_DEFAULTS } from "./defaults.ts";
+import type { PinKey, Axis, TouchMap } from "../types/index.ts";
+import { DET_DEFAULTS, UNDIST_DEFAULTS, CANVAS_DEFAULTS, TOUCHMAP_DEFAULTS } from "./defaults.ts";
 
 export const PIN_KEYS: readonly PinKey[] = ["tl", "tr", "br", "bl"];
 export const AXES: readonly Axis[] = ["x", "y"];
@@ -23,6 +23,14 @@ export const DET_SLIDERS: ReadonlyArray<{ id: string; key: NumericDetKey; int: b
   { id: "brightness", key: "brightness", int: true },
   { id: "contrast", key: "contrast", int: false },
   { id: "motionRate", key: "motionRate", int: false },
+];
+
+// Touch-UV affine sliders: slider id -> TouchMap key. Wired in the source controller.
+export const TOUCHMAP_SLIDERS: ReadonlyArray<{ id: string; key: keyof TouchMap }> = [
+  { id: "touchOffX", key: "offX" },
+  { id: "touchOffY", key: "offY" },
+  { id: "touchScaleX", key: "scaleX" },
+  { id: "touchScaleY", key: "scaleY" },
 ];
 
 const slider = (
@@ -127,6 +135,15 @@ export const PANEL: SectionCfg[] = [
       { kind: "canvas", id: "irMaskPreview", width: 320, height: 240 },
     ] },
   ] },
+
+  // TOUCH MAP: fine-tune touch alignment with the projected canvas (post-ROI UV nudge).
+  { rows: [{ items: [
+    { kind: "slabel", text: "TOUCH MAP" },
+    slider("touchOffX", "OFF X", -0.5, 0.5, 0.005, TOUCHMAP_DEFAULTS.offX),
+    slider("touchOffY", "OFF Y", -0.5, 0.5, 0.005, TOUCHMAP_DEFAULTS.offY),
+    slider("touchScaleX", "SCALE X", 0.5, 2, 0.01, TOUCHMAP_DEFAULTS.scaleX),
+    slider("touchScaleY", "SCALE Y", 0.5, 2, 0.01, TOUCHMAP_DEFAULTS.scaleY),
+  ] }] },
 
   // Status
   { rows: [{ items: [{ kind: "valtext", text: "ready", id: "status" }] }] },
