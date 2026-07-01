@@ -2,6 +2,7 @@
 // Names avoid lib.dom clashes: TouchEv (not TouchEvent), DetBlob (not Blob).
 export type PinKey = "tl" | "tr" | "br" | "bl";
 export type Axis = "x" | "y";
+export type SeamKey = "top" | "bottom";
 export type TouchState = "down" | "move" | "up";
 
 export interface Roi { x: number; y: number; w: number; h: number; }
