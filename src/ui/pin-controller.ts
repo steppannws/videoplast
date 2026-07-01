@@ -3,19 +3,23 @@
 // pin sliders / persisted offsets in sync with the warp.
 import { bindNumber, bindBool, saveSetting, getSetting } from "./persist.ts";
 import { drawGrid, nudgeAxis } from "./overlay.ts";
-import { scaleCorners, pointInQuad } from "../gl/quad.ts";
+import { scaleCorners, pointInQuad, paramOnEdge } from "../gl/quad.ts";
 import { PIN_KEYS, AXES, PIN_LIMIT } from "../config/controls.ts";
 import { clamp } from "../util/math.ts";
 import type { WarpGL } from "../gl/warp-gl.ts";
-import type { PinKey, Axis } from "../types/index.ts";
+import type { PinKey, Axis, SeamKey } from "../types/index.ts";
 
 const PIN_HIT = 26;
 const clampOff = (v: number): number => clamp(v, -PIN_LIMIT, PIN_LIMIT);
+// Seam edge -> its slider id and the two corners it slides between.
+const SEAM_SLIDER: Record<SeamKey, string> = { top: "seamTop", bottom: "seamBottom" };
+const SEAM_EDGE: Record<SeamKey, [PinKey, PinKey]> = { top: ["tl", "tr"], bottom: ["bl", "br"] };
 
 export class PinController {
   private readonly pinCtx: CanvasRenderingContext2D | null;
   private selectedPin: PinKey | null = null;
   private pinDrag: PinKey | null = null;
+  private midDrag: SeamKey | null = null;
   private bodyDrag = false;
   private lastBody: { x: number; y: number } | null = null;
   private gridOn = false;
@@ -37,28 +41,30 @@ export class PinController {
     if (!ctx || !canvas) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (this.gridOn) drawGrid(ctx, canvas.width, canvas.height, 50);
-    const pp = this.warp.cornerPositions();
-    for (const k of PIN_KEYS) {
-      const p = pp[k];
-      const sel = k === this.selectedPin;
-      ctx.save();
-      ctx.strokeStyle = sel ? "rgba(0,255,140,0.95)" : "rgba(255,255,255,0.65)";
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.lineWidth = sel ? 2.5 : 1.5;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(p.x - 10, p.y); ctx.lineTo(p.x + 10, p.y);
-      ctx.moveTo(p.x, p.y - 10); ctx.lineTo(p.x, p.y + 10);
-      ctx.stroke();
-      ctx.fillStyle = sel ? "rgba(0,255,140,0.9)" : "rgba(255,255,255,0.6)";
-      ctx.font = "10px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(k.toUpperCase(), p.x, p.y - 22);
-      ctx.restore();
-    }
+    const m = this.warp.meshPoints();
+    for (const k of PIN_KEYS) this.drawHandle(ctx, m[k], k === this.selectedPin, k.toUpperCase());
+    this.drawHandle(ctx, m.tc, this.midDrag === "top", "TC");
+    this.drawHandle(ctx, m.bc, this.midDrag === "bottom", "BC");
+  }
+
+  private drawHandle(ctx: CanvasRenderingContext2D, p: { x: number; y: number }, sel: boolean, label: string): void {
+    ctx.save();
+    ctx.strokeStyle = sel ? "rgba(0,255,140,0.95)" : "rgba(255,255,255,0.65)";
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.lineWidth = sel ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(p.x - 10, p.y); ctx.lineTo(p.x + 10, p.y);
+    ctx.moveTo(p.x, p.y - 10); ctx.lineTo(p.x, p.y + 10);
+    ctx.stroke();
+    ctx.fillStyle = sel ? "rgba(0,255,140,0.9)" : "rgba(255,255,255,0.6)";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(label, p.x, p.y - 22);
+    ctx.restore();
   }
 
   nudge(axis: Axis, dir: -1 | 1, shift: boolean): void {
@@ -88,9 +94,12 @@ export class PinController {
     for (const k of PIN_KEYS) for (const a of AXES) {
       bindNumber(k + a, (n) => this.warp.setPinOffset(k, a, n), (n) => Math.round(n) + "px");
     }
+    bindNumber("seamTop", (n) => this.warp.setSeam("top", n), (n) => n.toFixed(2));
+    bindNumber("seamBottom", (n) => this.warp.setSeam("bottom", n), (n) => n.toFixed(2));
     const reset = document.getElementById("resetPins") as HTMLElement | null;
     if (reset) reset.onclick = () => {
       for (const k of PIN_KEYS) for (const a of AXES) this.syncPinSlider(k, a, 0);
+      this.syncSeam("top", 0.5); this.syncSeam("bottom", 0.5);
       this.setStatus("anchors reset");
     };
     const zoomIn = document.getElementById("zoomIn") as HTMLElement | null;
@@ -111,6 +120,25 @@ export class PinController {
     }
     this.warp.setPinOffset(k, axis, val);
     saveSetting(id, String(val));
+  }
+
+  private syncSeam(edge: SeamKey, t: number): void {
+    const id = SEAM_SLIDER[edge];
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) {
+      el.value = String(t);
+      const r = document.getElementById(id + "v");
+      if (r) r.textContent = t.toFixed(2);
+    }
+    this.warp.setSeam(edge, t);
+    saveSetting(id, String(t));
+  }
+
+  private nearMid(px: number, py: number): SeamKey | null {
+    const m = this.warp.meshPoints();
+    if (Math.hypot(px - m.tc.x, py - m.tc.y) < PIN_HIT) return "top";
+    if (Math.hypot(px - m.bc.x, py - m.bc.y) < PIN_HIT) return "bottom";
+    return null;
   }
 
   private canvasPos(e: MouseEvent | TouchEvent): { x: number; y: number } {
@@ -149,7 +177,15 @@ export class PinController {
       e.preventDefault();
       return;
     }
-    // Not on a corner: grabbing inside the quad body moves all 4 anchors together.
+    // Then the mid-edge seam handles (slide along their edge).
+    const mid = this.nearMid(p.x, p.y);
+    if (mid) {
+      this.midDrag = mid;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      return;
+    }
+    // Not on a handle: grabbing inside the quad body moves all 4 anchors together.
     if (pointInQuad(p.x, p.y, this.warp.cornerPositions())) {
       this.bodyDrag = true;
       this.lastBody = p;
@@ -160,12 +196,21 @@ export class PinController {
 
   private movePinDrag = (e: MouseEvent | TouchEvent): void => {
     if (this.bodyDrag) { this.moveBodyDrag(e); return; }
+    if (this.midDrag) { this.moveMidDrag(e); return; }
     if (!this.pinDrag) return;
     const p = this.canvasPos(e);
     const b = this.baseCorner(this.pinDrag);
     this.syncPinSlider(this.pinDrag, "x", clampOff(p.x - b.x));
     this.syncPinSlider(this.pinDrag, "y", clampOff(p.y - b.y));
   };
+
+  private moveMidDrag(e: MouseEvent | TouchEvent): void {
+    if (!this.midDrag) return;
+    const p = this.canvasPos(e);
+    const cp = this.warp.cornerPositions();
+    const [a, b] = SEAM_EDGE[this.midDrag];
+    this.syncSeam(this.midDrag, paramOnEdge(p.x, p.y, cp[a], cp[b]));
+  }
 
   private moveBodyDrag(e: MouseEvent | TouchEvent): void {
     if (!this.lastBody) return;
@@ -178,7 +223,7 @@ export class PinController {
     this.lastBody = p;
   }
 
-  private endDrag = (): void => { this.pinDrag = null; this.bodyDrag = false; this.lastBody = null; };
+  private endDrag = (): void => { this.pinDrag = null; this.midDrag = null; this.bodyDrag = false; this.lastBody = null; };
 
   private attachDrag(): void {
     this.glCanvas.addEventListener("mousedown", this.startPinDrag as EventListener, true);
@@ -186,7 +231,7 @@ export class PinController {
     window.addEventListener("mouseup", this.endDrag);
     this.glCanvas.addEventListener("touchstart", this.startPinDrag as EventListener, { capture: true, passive: false });
     window.addEventListener("touchmove", (e) => {
-      if (this.pinDrag || this.bodyDrag) { this.movePinDrag(e); e.preventDefault(); }
+      if (this.pinDrag || this.midDrag || this.bodyDrag) { this.movePinDrag(e); e.preventDefault(); }
     }, { passive: false });
     window.addEventListener("touchend", this.endDrag);
   }

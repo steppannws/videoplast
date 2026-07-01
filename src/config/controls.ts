@@ -110,7 +110,13 @@ export const PANEL: SectionCfg[] = [
   ] },
 
   // Pins
-  { rows: PIN_KEYS.map(pinRow) },
+  { rows: [...PIN_KEYS.map(pinRow), {
+    items: [
+      { kind: "slabel", text: "Seam" } as Item,
+      slider("seamTop", "TOP", 0, 1, 0.01, 0.5),
+      slider("seamBottom", "BOTTOM", 0, 1, 0.01, 0.5),
+    ],
+  }] },
 
   // IR DETECT
   { rows: [
