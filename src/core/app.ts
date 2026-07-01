@@ -97,6 +97,7 @@ installOverlay({
   isEditing: () => { const a = document.activeElement; return !!a && (a.tagName === "INPUT" || a.tagName === "SELECT"); },
   onNudge: (axis, dir, shift) => pins.nudge(axis, dir, shift),
   onToggleGrid: () => { const c = document.getElementById("grid") as HTMLInputElement | null; if (c) c.click(); },
+  onToggleWarp: () => { const c = document.getElementById("warpEdit") as HTMLInputElement | null; if (c) c.click(); },
   onSelectEffect: (index) => { const e = EFFECTS[index]; if (e) effect.set(e.id); },
   persist: saveSetting,
   initialHidden: getSetting("uiHidden") === true,

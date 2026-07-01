@@ -3,14 +3,11 @@
 // markup in index.html, with slider defaults sourced from config/defaults.ts so a
 // value is never duplicated between TS state and HTML.
 import type { SectionCfg, Item } from "../ui/control-factory.ts";
-import type { PinKey, Axis, TouchMap } from "../types/index.ts";
+import type { TouchMap } from "../types/index.ts";
 import { DET_DEFAULTS, UNDIST_DEFAULTS, CANVAS_DEFAULTS, TOUCHMAP_DEFAULTS } from "./defaults.ts";
 
-export const PIN_KEYS: readonly PinKey[] = ["tl", "tr", "br", "bl"];
-export const AXES: readonly Axis[] = ["x", "y"];
-
-// Max magnitude of a per-corner pin offset (px). Wide enough to move the content quad
-// across the frame and scale it up ~3×, not just nudge keystone.
+// Max magnitude of a warp control-point offset (px). Wide enough to move the content
+// across the frame and scale it up ~3×.
 export const PIN_LIMIT = 2000;
 
 // The numeric DetOpt fields (everything except the boolean `invert`).
@@ -41,15 +38,6 @@ const slider = (
   id: string, label: string, min: number, max: number, step: number, value: number, unit = "",
 ): Item => ({ kind: "slider", id, label, min, max, step, value, unit });
 
-// One Pin row per corner: a label + X/Y offset sliders.
-const pinRow = (k: PinKey) => ({
-  items: [
-    { kind: "slabel", text: `Pin ${k.toUpperCase()}` } as Item,
-    slider(`${k}x`, "X", -PIN_LIMIT, PIN_LIMIT, 1, 0, "px"),
-    slider(`${k}y`, "Y", -PIN_LIMIT, PIN_LIMIT, 1, 0, "px"),
-  ],
-});
-
 export const PANEL: SectionCfg[] = [
   // Projection
   { rows: [
@@ -57,11 +45,12 @@ export const PANEL: SectionCfg[] = [
       { kind: "slabel", text: "Projection" },
       { kind: "checkbox", id: "fitScreen", label: "FIT SCREEN", checked: true },
       { kind: "checkbox", id: "grid", label: "TEST GRID" },
-      { kind: "button", id: "resetPins", label: "RESET ANCHORS" },
+      { kind: "checkbox", id: "warpEdit", label: "WARP GRID", checked: true },
+      { kind: "button", id: "resetPins", label: "RESET WARP" },
       { kind: "button", id: "zoomOut", label: "ZOOM OUT" },
       { kind: "button", id: "zoomIn", label: "ZOOM IN" },
     ] },
-    { items: [{ kind: "valtext", text: "H hide · F fullscreen · Esc show · click pin + ←↑→↓ nudge (Shift ×10) · drag content to move · ZOOM buttons scale" }] },
+    { items: [{ kind: "valtext", text: "H hide · F fullscreen · Esc show · W warp on/off · drag point + ←↑→↓ nudge (Shift ×10) · drag inside to move · ZOOM buttons scale" }] },
   ] },
 
   // Canvas
@@ -108,15 +97,6 @@ export const PANEL: SectionCfg[] = [
     ] },
     { id: "effectParams", items: [] },
   ] },
-
-  // Pins
-  { rows: [...PIN_KEYS.map(pinRow), {
-    items: [
-      { kind: "slabel", text: "Seam" } as Item,
-      slider("seamTop", "TOP", 0, 1, 0.01, 0.5),
-      slider("seamBottom", "BOTTOM", 0, 1, 0.01, 0.5),
-    ],
-  }] },
 
   // IR DETECT
   { rows: [

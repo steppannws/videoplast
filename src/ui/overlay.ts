@@ -59,6 +59,7 @@ export interface InstallOverlayOpts {
   isEditing: () => boolean;
   onNudge: (axis: Axis, dir: -1 | 1, shift: boolean) => void;
   onToggleGrid: () => void;
+  onToggleWarp?: () => void;
   onSelectEffect?: (index: number) => void;
   persist: (key: string, value: unknown) => void;
   initialHidden: boolean;
@@ -67,7 +68,7 @@ export interface InstallOverlayOpts {
 
 // Wire global projection keys. App hooks are injected so this stays DOM-light.
 export function installOverlay(opts: InstallOverlayOpts): void {
-  const { panel, body, isEditing, onNudge, onToggleGrid, onSelectEffect, persist, initialHidden, idleMs = 15000 } = opts;
+  const { panel, body, isEditing, onNudge, onToggleGrid, onToggleWarp, onSelectEffect, persist, initialHidden, idleMs = 15000 } = opts;
   let hidden = !!initialHidden;
   const applyHidden = () => { panel.classList.toggle("hidden", hidden); };  // cursor handled by idle timer below
   applyHidden();
@@ -97,6 +98,7 @@ export function installOverlay(opts: InstallOverlayOpts): void {
     if (k === "h") { hidden = !hidden; applyHidden(); persist("uiHidden", hidden); }
     else if (k === "f") { toggleFullscreen(); }
     else if (k === "g") { onToggleGrid(); }
+    else if (k === "w") { if (onToggleWarp) onToggleWarp(); }
     else if (ARROW[e.key]) { e.preventDefault(); const [axis, dir] = ARROW[e.key]; onNudge(axis, dir, e.shiftKey); }
   });
 }

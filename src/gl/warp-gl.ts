@@ -1,30 +1,16 @@
 // src/gl/warp-gl.ts
-import { computeH, inv3 } from "./homography.ts";
-import { columnQuads, meshPoints as buildMesh } from "./quad.ts";
+// Media warp: a 4×4 control-point grid rendered as a fine Catmull-Rom mesh. The source
+// texture is sampled with per-vertex UVs; the grid deforms the destination positions.
+import { gridFromOffsets, evalGrid } from "./quad.ts";
 import type { Pt } from "./homography.ts";
-import type { Mesh } from "./quad.ts";
-import type { PinKey, Axis, SeamKey } from "../types/index.ts";
+import type { Grid } from "./quad.ts";
 
-type Corners = Record<PinKey, { x: number; y: number }>;
+const N = 24; // tessellation subdivisions per axis
 
-// Per-vertex: clip-space position + the destination pixel position (for perspective-correct
-// inverse-homography sampling in the fragment shader).
-const VS = `attribute vec2 a_clip; attribute vec2 a_dst; varying vec2 v_dst;
-void main(){ v_dst=a_dst; gl_Position=vec4(a_clip,0.0,1.0); }`;
-const FS = `precision mediump float; uniform sampler2D u_tex; uniform mat3 u_Hinv; uniform vec2 u_res; varying vec2 v_dst;
-void main(){ vec3 h=u_Hinv*vec3(v_dst,1.0); vec2 sp=h.xy/h.z;
-  vec2 uv=vec2(sp.x/u_res.x, 1.0 - sp.y/u_res.y);
-  if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0) gl_FragColor=vec4(0,0,0,1); else gl_FragColor=texture2D(u_tex,uv); }`;
-
-// Pure: destination corner positions = base corners + per-corner pixel offsets.
-export function cornerPositions(w: number, h: number, off: Corners): Corners {
-  return {
-    tl: { x: 0 + off.tl.x, y: 0 + off.tl.y },
-    tr: { x: w + off.tr.x, y: 0 + off.tr.y },
-    br: { x: w + off.br.x, y: h + off.br.y },
-    bl: { x: 0 + off.bl.x, y: h + off.bl.y },
-  };
-}
+const VS = `attribute vec2 a_clip; attribute vec2 a_uv; varying vec2 v_uv;
+void main(){ v_uv=a_uv; gl_Position=vec4(a_clip,0.0,1.0); }`;
+const FS = `precision mediump float; uniform sampler2D u_tex; varying vec2 v_uv;
+void main(){ gl_FragColor = texture2D(u_tex, vec2(v_uv.x, 1.0 - v_uv.y)); }`;
 
 function mk(gl: WebGLRenderingContext, t: number, s: string): WebGLShader {
   const sh = gl.createShader(t);
@@ -34,20 +20,33 @@ function mk(gl: WebGLRenderingContext, t: number, s: string): WebGLShader {
   return sh;
 }
 
+// Static triangle indices for an (N+1)×(N+1) vertex grid.
+function buildIndices(): Uint16Array {
+  const idx: number[] = [];
+  const row = N + 1;
+  for (let b = 0; b < N; b++) for (let a = 0; a < N; a++) {
+    const v00 = b * row + a, v10 = v00 + 1, v01 = v00 + row, v11 = v01 + 1;
+    idx.push(v00, v10, v01, v10, v11, v01);
+  }
+  return new Uint16Array(idx);
+}
+
+const zeros = (): Pt[] => Array.from({ length: 16 }, () => ({ x: 0, y: 0 }));
+
 export class WarpGL {
   gl: WebGLRenderingContext;
   w: number;
   h: number;
   prog: WebGLProgram;
-  quad: WebGLBuffer;
+  vbo: WebGLBuffer;
+  ibo: WebGLBuffer;
   aClip: number;
-  aDst: number;
-  uHinv: WebGLUniformLocation | null;
-  uRes: WebGLUniformLocation | null;
+  aUv: number;
   uTex: WebGLUniformLocation | null;
-  off: Corners;
-  // Seam position (0..1) of the top-center / bottom-center handles along their edges.
-  seam: { top: number; bottom: number };
+  indexCount: number;
+  verts: Float32Array;
+  // Per-control-point pixel offsets from the base grid; all zero = identity (flat rect).
+  off: Pt[];
   constructor(gl: WebGLRenderingContext, w: number, h: number) {
     this.gl = gl; this.w = w; this.h = h;
     const prog = gl.createProgram();
@@ -56,55 +55,46 @@ export class WarpGL {
     gl.attachShader(prog, mk(gl, gl.VERTEX_SHADER, VS));
     gl.attachShader(prog, mk(gl, gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error("warp link: " + gl.getProgramInfoLog(prog));
-    const quad = gl.createBuffer();
-    if (!quad) throw new Error("warp: createBuffer failed");
-    this.quad = quad;
+    const vbo = gl.createBuffer(), ibo = gl.createBuffer();
+    if (!vbo || !ibo) throw new Error("warp: createBuffer failed");
+    this.vbo = vbo; this.ibo = ibo;
+    const indices = buildIndices();
+    this.indexCount = indices.length;
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     this.aClip = gl.getAttribLocation(prog, "a_clip");
-    this.aDst = gl.getAttribLocation(prog, "a_dst");
-    this.uHinv = gl.getUniformLocation(prog, "u_Hinv");
-    this.uRes = gl.getUniformLocation(prog, "u_res");
+    this.aUv = gl.getAttribLocation(prog, "a_uv");
     this.uTex = gl.getUniformLocation(prog, "u_tex");
-    // per-corner pixel offsets from the base corners; all zero = identity (no keystone)
-    this.off = { tl:{x:0,y:0}, tr:{x:0,y:0}, br:{x:0,y:0}, bl:{x:0,y:0} };
-    this.seam = { top: 0.5, bottom: 0.5 };
+    this.verts = new Float32Array((N + 1) * (N + 1) * 4);
+    this.off = zeros();
   }
-  setPinOffset(k: PinKey, axis: Axis, v: number): void { this.off[k][axis] = v; }
-  setSeam(edge: SeamKey, t: number): void { this.seam[edge] = t; }
+  setPointOffset(idx: number, x: number, y: number): void { this.off[idx] = { x, y }; }
+  reset(): void { this.off = zeros(); }
   resize(w: number, h: number): void { this.w = w; this.h = h; }
-  cornerPositions(): Corners { return cornerPositions(this.w, this.h, this.off); }
-  meshPoints(): Mesh { return buildMesh(this.cornerPositions(), this.seam.top, this.seam.bottom); }
+  points(): Grid { return gridFromOffsets(this.off, this.w, this.h); }
   draw(srcTex: WebGLTexture): void {
-    const gl = this.gl;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, this.w, this.h);
+    const gl = this.gl, w = this.w, h = this.h;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h);
     gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    const grid = this.points();
+    const v = this.verts;
+    let o = 0;
+    for (let b = 0; b <= N; b++) for (let a = 0; a <= N; a++) {
+      const u = a / N, vv = b / N;
+      const p = evalGrid(grid, u, vv);
+      v[o++] = 2 * p.x / w - 1;
+      v[o++] = 1 - 2 * p.y / h;
+      v[o++] = u;
+      v[o++] = vv;
+    }
     gl.useProgram(this.prog);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, srcTex);
     gl.uniform1i(this.uTex, 0);
-    gl.uniform2f(this.uRes, this.w, this.h);
-    const cols = columnQuads(this.meshPoints(), this.w, this.h);
-    for (const col of [cols.left, cols.right]) {
-      const Hi = inv3(computeH(col.src, col.dst));
-      gl.uniformMatrix3fv(this.uHinv, false, [Hi[0],Hi[3],Hi[6],Hi[1],Hi[4],Hi[7],Hi[2],Hi[5],Hi[8]]);
-      this.drawColumn(col.dst);
-    }
-  }
-  // Render one column's dst quad (dst ordered [TL,TR,BR,BL]) as a triangle strip; each
-  // vertex carries its clip-space position and its dst pixel position.
-  private drawColumn(dst: Pt[]): void {
-    const gl = this.gl, w = this.w, h = this.h;
-    const strip = [dst[0], dst[1], dst[3], dst[2]]; // TL, TR, BL, BR
-    const verts = new Float32Array(16);
-    for (let i = 0; i < 4; i++) {
-      const p = strip[i];
-      verts[i*4+0] = 2 * p.x / w - 1;
-      verts[i*4+1] = 1 - 2 * p.y / h;
-      verts[i*4+2] = p.x;
-      verts[i*4+3] = p.y;
-    }
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
-    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, v, gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(this.aClip); gl.vertexAttribPointer(this.aClip, 2, gl.FLOAT, false, 16, 0);
-    gl.enableVertexAttribArray(this.aDst); gl.vertexAttribPointer(this.aDst, 2, gl.FLOAT, false, 16, 8);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.enableVertexAttribArray(this.aUv); gl.vertexAttribPointer(this.aUv, 2, gl.FLOAT, false, 16, 8);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
+    gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
   }
 }
