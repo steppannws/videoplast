@@ -1,0 +1,94 @@
+/* Control panel: the fixed left overlay and its sections / rows / controls. */
+#ui {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--panel-bg);
+  padding: 8px 12px;
+  border-right: var(--border-w) solid var(--border);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.section {
+  border-top: var(--border-w) solid var(--border);
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.slabel {
+  font-size: var(--fs-label);
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  min-width: 84px;
+  text-transform: uppercase;
+}
+
+.ctrl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ctrl label {
+  font-size: var(--fs-ctrl);
+  color: var(--text-label);
+  letter-spacing: 1px;
+}
+
+.val {
+  font-size: var(--fs-ctrl);
+  color: var(--text-dim);
+  min-width: 42px;
+}
+
+/* Modifier: readouts/help text that should size to content (was inline min-width:auto). */
+.val--auto {
+  min-width: auto;
+}
+
+input[type="range"] {
+  width: 80px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+select,
+button,
+.fbtn {
+  font-family: var(--font-mono);
+  font-size: var(--fs-ctrl);
+  background: var(--ctrl-bg);
+  color: var(--ctrl-text);
+  border: var(--border-w) solid var(--border-strong);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.fbtn input {
+  display: none;
+}
+
+#irPreview {
+  border: var(--border-w) solid var(--border);
+  margin-top: 6px;
+}
+
+/* Utility: !important beats the #ui id selector so a single class hides the
+   panel and the conditional camera row alike. */
+.hidden {
+  display: none !important;
+}

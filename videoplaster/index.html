@@ -1,107 +1,12 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VIDEOPLASTER 02</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{background:#000;font-family:monospace;color:#888;margin:0;min-height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
-#wrap{position:relative}
-#glCanvas{display:block;touch-action:none}
-#pinCanvas{position:absolute;left:0;top:0;pointer-events:none}
-#ui{position:fixed;left:0;top:0;width:300px;max-height:100vh;overflow-y:auto;background:rgba(0,0,0,0.78);padding:8px 12px;border-right:.5px solid #222;z-index:10;display:flex;flex-direction:column}
-#ui.hidden{display:none}
-.section{border-top:.5px solid #222;padding:10px 0;display:flex;flex-direction:column;gap:8px}
-.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.slabel{font-size:9px;letter-spacing:3px;color:#555;min-width:84px;text-transform:uppercase}
-.ctrl{display:flex;align-items:center;gap:5px}
-.ctrl label{font-size:10px;color:#666;letter-spacing:1px}
-.val{font-size:10px;color:#555;min-width:42px}
-input[type=range]{width:80px;accent-color:#555;cursor:pointer}
-select,button,.fbtn{font-family:monospace;font-size:10px;background:#111;color:#999;border:.5px solid #333;padding:3px 8px;cursor:pointer}
-.fbtn input{display:none}
-#irPreview{border:.5px solid #222;margin-top:6px}
-</style></head>
+</head>
 <body>
 <div id="wrap">
   <canvas id="glCanvas" width="800" height="500"></canvas>
   <canvas id="pinCanvas" width="800" height="500"></canvas>
 </div>
-<div id="ui">
-  <div class="section"><div class="row">
-    <span class="slabel">Projection</span>
-    <label class="ctrl"><input type="checkbox" id="fitScreen" checked> FIT SCREEN</label>
-    <label class="ctrl"><input type="checkbox" id="grid"> TEST GRID</label>
-    <button id="resetPins">RESET ANCHORS</button>
-  </div>
-  <div class="row"><span class="val" style="min-width:auto">H hide · F fullscreen · Esc show · click pin + ←↑→↓ nudge (Shift ×10)</span></div></div>
-
-  <div class="section"><div class="row">
-    <span class="slabel">Canvas</span>
-    <div class="ctrl"><label>WIDTH</label><input type="range" id="canvasW" min="200" max="1400" step="10" value="800"><span class="val" id="canvasWv">800px</span></div>
-    <div class="ctrl"><label>HEIGHT</label><input type="range" id="canvasH" min="150" max="900" step="10" value="500"><span class="val" id="canvasHv">500px</span></div>
-  </div></div>
-
-  <div class="section"><div class="row">
-    <span class="slabel">Source</span>
-    <select id="sourceSel"><option value="mouse">MOUSE</option><option value="leap-ir">LEAP IR</option><option value="pseye">PS EYE</option><option value="ir-camera">IR CAMERA</option><option value="leap-z">LEAP Z</option></select>
-  </div>
-  <div class="row" id="camDeviceRow" style="display:none"><span class="slabel">Camera</span><select id="camDevice"></select></div></div>
-
-  <div class="section"><div class="row">
-    <span class="slabel">Image</span>
-    <label class="fbtn">LOAD<input type="file" accept="image/*,video/*" id="bgFile"></label>
-    <button id="bgClear">CLEAR</button>
-    <div class="ctrl"><label>SCALE X</label><input type="range" id="imgScaleX" min="0.1" max="3" step="0.05" value="1"><span class="val" id="imgScaleXv">1.0x</span></div>
-    <div class="ctrl"><label>SCALE Y</label><input type="range" id="imgScaleY" min="0.1" max="3" step="0.05" value="1"><span class="val" id="imgScaleYv">1.0x</span></div>
-    <div class="ctrl"><label>ROT</label><input type="range" id="imgRot" min="-180" max="180" step="1" value="0"><span class="val" id="imgRotv">0</span></div>
-  </div></div>
-
-  <div class="section">
-    <div class="row">
-      <span class="slabel">Effect</span>
-      <select id="effectSel"></select>
-      <span class="val" style="min-width:auto">keys 1-6</span>
-    </div>
-    <div class="row" id="effectParams"></div>
-  </div>
-
-  <div class="section">
-    <div class="row"><span class="slabel">Pin TL</span>
-      <div class="ctrl"><label>X</label><input type="range" id="tlx" min="-400" max="400" step="1" value="0"><span class="val" id="tlxv">0px</span></div>
-      <div class="ctrl"><label>Y</label><input type="range" id="tly" min="-400" max="400" step="1" value="0"><span class="val" id="tlyv">0px</span></div></div>
-    <div class="row"><span class="slabel">Pin TR</span>
-      <div class="ctrl"><label>X</label><input type="range" id="trx" min="-400" max="400" step="1" value="0"><span class="val" id="trxv">0px</span></div>
-      <div class="ctrl"><label>Y</label><input type="range" id="try" min="-400" max="400" step="1" value="0"><span class="val" id="tryv">0px</span></div></div>
-    <div class="row"><span class="slabel">Pin BR</span>
-      <div class="ctrl"><label>X</label><input type="range" id="brx" min="-400" max="400" step="1" value="0"><span class="val" id="brxv">0px</span></div>
-      <div class="ctrl"><label>Y</label><input type="range" id="bry" min="-400" max="400" step="1" value="0"><span class="val" id="bryv">0px</span></div></div>
-    <div class="row"><span class="slabel">Pin BL</span>
-      <div class="ctrl"><label>X</label><input type="range" id="blx" min="-400" max="400" step="1" value="0"><span class="val" id="blxv">0px</span></div>
-      <div class="ctrl"><label>Y</label><input type="range" id="bly" min="-400" max="400" step="1" value="0"><span class="val" id="blyv">0px</span></div></div>
-  </div>
-
-  <div class="section">
-    <div class="row">
-      <span class="slabel">IR DETECT</span>
-      <button id="captureBg">CAPTURE BG</button>
-      <button id="resetZone">RESET ZONE</button>
-      <button id="restartIr">RESTART IR</button>
-      <label class="ctrl"><input type="checkbox" id="invert"> INVERT</label>
-      <label class="ctrl"><input type="checkbox" id="mirrorX"> MIRROR X</label>
-      <label class="ctrl"><input type="checkbox" id="mirrorY"> MIRROR Y</label>
-      <div class="ctrl"><label>THRESHOLD</label><input type="range" id="threshold" min="0" max="255" step="1" value="40"><span class="val" id="thresholdv">40</span></div>
-      <div class="ctrl"><label>MIN AREA</label><input type="range" id="minArea" min="0" max="500" step="1" value="20"><span class="val" id="minAreav">20</span></div>
-      <div class="ctrl"><label>MAX AREA</label><input type="range" id="maxArea" min="100" max="20000" step="100" value="8000"><span class="val" id="maxAreav">8000</span></div>
-      <div class="ctrl"><label>BLUR</label><input type="range" id="blur" min="0" max="6" step="1" value="1"><span class="val" id="blurv">1</span></div>
-      <div class="ctrl"><label>EROSION</label><input type="range" id="erosion" min="0" max="6" step="1" value="2"><span class="val" id="erosionv">2</span></div>
-      <label class="ctrl"><input type="checkbox" id="undistort"> FISHEYE</label>
-      <div class="ctrl"><label>K1</label><input type="range" id="undistK1" min="-1" max="1" step="0.01" value="-0.3"><span class="val" id="undistK1v">-0.30</span></div>
-      <div class="ctrl"><label>K2</label><input type="range" id="undistK2" min="-0.5" max="0.5" step="0.01" value="0"><span class="val" id="undistK2v">0.00</span></div>
-    </div>
-    <div class="row"><canvas id="irPreview" width="320" height="240"></canvas></div>
-  </div>
-
-  <div class="section"><span class="val" id="status" style="min-width:auto">ready</span></div>
-</div>
-<script type="module" src="src/app.ts"></script>
+<div id="ui"></div>
+<script type="module" src="src/core/app.ts"></script>
 </body></html>

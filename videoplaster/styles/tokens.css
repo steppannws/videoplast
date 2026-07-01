@@ -1,0 +1,21 @@
+/* Design tokens — single source of truth for the monochrome dark UI.
+   Extracted from the original inline <style> block in index.html. */
+:root {
+  /* color */
+  --bg: #000;
+  --panel-bg: rgba(0, 0, 0, 0.78);
+  --ctrl-bg: #111;
+  --border: #222;
+  --border-strong: #333;
+  --text: #888;
+  --text-dim: #555;
+  --text-label: #666;
+  --ctrl-text: #999;
+  --accent: #555;
+
+  /* metrics / type */
+  --border-w: 0.5px;
+  --fs-label: 9px;
+  --fs-ctrl: 10px;
+  --font-mono: monospace;
+}
