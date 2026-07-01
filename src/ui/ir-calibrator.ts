@@ -4,26 +4,30 @@
 import { saveSetting } from "./persist.ts";
 import { clamp } from "../util/math.ts";
 import type { IrSource } from "../sources/ir-source.ts";
-import type { Roi, DetBlob, PinKey } from "../types/index.ts";
+import type { Roi, DetBlob, DetOpt, PinKey } from "../types/index.ts";
 
 const HIT = 0.04;   // ROI handle hit radius (normalized)
 const MIN = 0.05;   // minimum ROI extent (normalized)
 
 export class IrCalibrator {
   private readonly ctx: CanvasRenderingContext2D | null;
+  private readonly maskCtx: CanvasRenderingContext2D | null;
   private dragCorner: PinKey | null = null;
 
   constructor(
     private readonly preview: HTMLCanvasElement | null,
+    private readonly mask: HTMLCanvasElement | null,
     private readonly getIrSrc: () => IrSource | null,
     private readonly setStatus: (s: string) => void,
   ) {
     this.ctx = preview ? preview.getContext("2d") : null;
+    this.maskCtx = mask ? mask.getContext("2d") : null;
   }
 
   // Route the active IR source's preview frames into this calibrator.
   attach(src: IrSource): void {
-    src.previewCb = (rgba, w, h, blobs) => this.drawPreview(rgba, w, h, blobs, src.roi);
+    src.previewCb = (rgba, bin, w, h, blobs) =>
+      this.drawPreview(rgba, bin, w, h, blobs, src.roi, src.opt);
   }
 
   wire(): void {
@@ -105,16 +109,56 @@ export class IrCalibrator {
     }
   }
 
-  private drawPreview(rgba: Uint8ClampedArray, w: number, h: number, blobs: DetBlob[], roi?: Roi): void {
+  private drawPreview(rgba: Uint8ClampedArray, bin: Uint8Array, w: number, h: number, blobs: DetBlob[], roi?: Roi, opt?: DetOpt): void {
     const ctx = this.ctx, pv = this.preview;
-    if (!ctx || !pv) return;
-    if (pv.width !== w || pv.height !== h) { pv.width = w; pv.height = h; }
+    if (ctx && pv) {
+      if (pv.width !== w || pv.height !== h) { pv.width = w; pv.height = h; }
+      const img = ctx.createImageData(w, h);
+      img.data.set(rgba);
+      ctx.putImageData(img, 0, 0);
+      ctx.strokeStyle = "#0f0";
+      ctx.lineWidth = 1;
+      for (const b of blobs) ctx.strokeRect(b.cx - 3, b.cy - 3, 6, 6);
+      if (roi) this.drawRoi(roi, w, h);
+    }
+    this.drawMask(bin, w, h, blobs, roi, opt);
+  }
+
+  // Right canvas: the binary threshold+morphology mask the blob detector runs on,
+  // with blob boxes, an ROI border, and a live parameter HUD. Read-only.
+  private drawMask(bin: Uint8Array, w: number, h: number, blobs: DetBlob[], roi?: Roi, opt?: DetOpt): void {
+    const ctx = this.maskCtx, mv = this.mask;
+    if (!ctx || !mv) return;
+    if (mv.width !== w || mv.height !== h) { mv.width = w; mv.height = h; }
     const img = ctx.createImageData(w, h);
-    img.data.set(rgba);
+    const d = img.data;
+    for (let i = 0; i < w * h; i++) { const v = bin[i] ? 255 : 0; d[i*4] = d[i*4+1] = d[i*4+2] = v; d[i*4+3] = 255; }
     ctx.putImageData(img, 0, 0);
     ctx.strokeStyle = "#0f0";
     ctx.lineWidth = 1;
     for (const b of blobs) ctx.strokeRect(b.cx - 3, b.cy - 3, 6, 6);
-    if (roi) this.drawRoi(roi, w, h);
+    if (roi) {
+      ctx.strokeStyle = "#0f0";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(roi.x * w, roi.y * h, roi.w * w, roi.h * h);
+    }
+    if (opt) this.drawHud(opt, blobs.length);
+  }
+
+  // One-line parameter readout, top-left, legible over black or white pixels.
+  private drawHud(opt: DetOpt, blobCount: number): void {
+    const ctx = this.maskCtx;
+    if (!ctx) return;
+    const text = `THR ${opt.threshold} · BLUR ${opt.blurAmt} · ERO ${opt.erosionAmt}`
+      + ` · MIN ${opt.minArea} · MAX ${opt.maxArea} · INV ${opt.invert ? "on" : "off"} · ${blobCount} blobs`;
+    ctx.save();
+    ctx.font = "11px monospace";
+    ctx.textBaseline = "top";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(0,0,0,0.9)";
+    ctx.strokeText(text, 4, 4);
+    ctx.fillStyle = "#0f0";
+    ctx.fillText(text, 4, 4);
+    ctx.restore();
   }
 }

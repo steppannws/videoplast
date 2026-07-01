@@ -22,7 +22,7 @@ export class IrSource extends TouchSource {
   get roi(): Roi { return this.pipeline.roi; }
   setRoi(r: Roi): void { this.pipeline.setRoi(r); }
   captureBackground(): void { this.pipeline.captureBackground(); }
-  set previewCb(cb: ((rgba: Uint8ClampedArray, w: number, h: number, blobs: DetBlob[]) => void) | null) { this.pipeline.previewCb = cb; }
+  set previewCb(cb: ((rgba: Uint8ClampedArray, bin: Uint8Array, w: number, h: number, blobs: DetBlob[]) => void) | null) { this.pipeline.previewCb = cb; }
   set statusCb(cb: (s: string) => void) { this.provider.onStatus(cb); }
   start(): void { this.provider.start(); }
   stop(): void { this.provider.stop(); }

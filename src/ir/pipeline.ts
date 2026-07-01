@@ -39,7 +39,7 @@ export class IrTouchPipeline {
   roi: Roi = { x: 0, y: 0, w: 1, h: 1 };
   mirror: MirrorOpt = { ...MIRROR_DEFAULTS };
   tracker = new BlobTracker({ maxDist: 0.08 });
-  previewCb: ((rgba: Uint8ClampedArray, w: number, h: number, blobs: DetBlob[]) => void) | null = null;
+  previewCb: ((rgba: Uint8ClampedArray, bin: Uint8Array, w: number, h: number, blobs: DetBlob[]) => void) | null = null;
   onEvent: (ev: TouchEv) => void = () => {};
   captureBackground(): void { if (this.frame) this.bg = this.frame.slice(); }
   setRoi(roi: Roi): void { this.roi = roi; }
@@ -56,11 +56,11 @@ export class IrTouchPipeline {
     this.frame = rgba;
     if (this.bg && this.bg.length !== rgba.length) this.bg = null;
     const detIn = this.bg ? subtractBackground(rgba, this.bg, w * h) : rgba;
-    const { blobs } = findBlobs({ data: detIn, width: w, height: h }, this.opt);
+    const { blobs, bin } = findBlobs({ data: detIn, width: w, height: h }, this.opt);
     const mapped = blobs
       .map((b) => { const { u, v } = roiMap(b.cx, b.cy, w, h, this.roi); return { x: u, y: v, strength: Math.min(1, b.bright/255) }; })
       .filter((pt) => pt.x>=0 && pt.x<=1 && pt.y>=0 && pt.y<=1);
     for (const ev of this.tracker.update(mapped)) this.onEvent(ev);
-    if (this.previewCb) this.previewCb(detIn, w, h, blobs);
+    if (this.previewCb) this.previewCb(detIn, bin, w, h, blobs);
   }
 }

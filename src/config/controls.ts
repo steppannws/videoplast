@@ -114,7 +114,10 @@ export const PANEL: SectionCfg[] = [
       slider("undistK1", "K1", -1, 1, 0.01, UNDIST_DEFAULTS.k1),
       slider("undistK2", "K2", -0.5, 0.5, 0.01, UNDIST_DEFAULTS.k2),
     ] },
-    { items: [{ kind: "canvas", id: "irPreview", width: 320, height: 240 }] },
+    { items: [
+      { kind: "canvas", id: "irPreview", width: 320, height: 240 },
+      { kind: "canvas", id: "irMaskPreview", width: 320, height: 240 },
+    ] },
   ] },
 
   // Status
