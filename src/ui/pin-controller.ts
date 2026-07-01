@@ -3,6 +3,7 @@
 // pin sliders / persisted offsets in sync with the warp.
 import { bindNumber, bindBool, saveSetting, getSetting } from "./persist.ts";
 import { drawGrid, nudgeAxis } from "./overlay.ts";
+import { scaleCorners, pointInQuad } from "../gl/quad.ts";
 import { PIN_KEYS, AXES, PIN_LIMIT } from "../config/controls.ts";
 import { clamp } from "../util/math.ts";
 import type { WarpGL } from "../gl/warp-gl.ts";
@@ -15,6 +16,8 @@ export class PinController {
   private readonly pinCtx: CanvasRenderingContext2D | null;
   private selectedPin: PinKey | null = null;
   private pinDrag: PinKey | null = null;
+  private bodyDrag = false;
+  private lastBody: { x: number; y: number } | null = null;
   private gridOn = false;
 
   constructor(
@@ -65,6 +68,17 @@ export class PinController {
     this.syncPinSlider(this.selectedPin, axis, nudgeAxis(cur, dir, shift));
   }
 
+  // Scale the whole content quad about its centroid, rewriting each corner's offset.
+  scaleBy(factor: number): void {
+    const next = scaleCorners(this.warp.cornerPositions(), factor);
+    for (const k of PIN_KEYS) {
+      const b = this.baseCorner(k);
+      this.syncPinSlider(k, "x", clampOff(next[k].x - b.x));
+      this.syncPinSlider(k, "y", clampOff(next[k].y - b.y));
+    }
+    this.setStatus(factor > 1 ? "content scaled up" : "content scaled down");
+  }
+
   wire(): void {
     // One-time migration of legacy absolute pin values to the offset schema.
     if (getSetting("pinSchema") !== "offset") {
@@ -79,6 +93,10 @@ export class PinController {
       for (const k of PIN_KEYS) for (const a of AXES) this.syncPinSlider(k, a, 0);
       this.setStatus("anchors reset");
     };
+    const zoomIn = document.getElementById("zoomIn") as HTMLElement | null;
+    if (zoomIn) zoomIn.onclick = () => this.scaleBy(1.1);
+    const zoomOut = document.getElementById("zoomOut") as HTMLElement | null;
+    if (zoomOut) zoomOut.onclick = () => this.scaleBy(1 / 1.1);
     bindBool("grid", (b) => this.setGrid(b));
   }
 
@@ -129,10 +147,19 @@ export class PinController {
       this.pinDrag = k;
       e.stopImmediatePropagation();
       e.preventDefault();
+      return;
+    }
+    // Not on a corner: grabbing inside the quad body moves all 4 anchors together.
+    if (pointInQuad(p.x, p.y, this.warp.cornerPositions())) {
+      this.bodyDrag = true;
+      this.lastBody = p;
+      e.stopImmediatePropagation();
+      e.preventDefault();
     }
   };
 
   private movePinDrag = (e: MouseEvent | TouchEvent): void => {
+    if (this.bodyDrag) { this.moveBodyDrag(e); return; }
     if (!this.pinDrag) return;
     const p = this.canvasPos(e);
     const b = this.baseCorner(this.pinDrag);
@@ -140,14 +167,27 @@ export class PinController {
     this.syncPinSlider(this.pinDrag, "y", clampOff(p.y - b.y));
   };
 
+  private moveBodyDrag(e: MouseEvent | TouchEvent): void {
+    if (!this.lastBody) return;
+    const p = this.canvasPos(e);
+    const dx = p.x - this.lastBody.x, dy = p.y - this.lastBody.y;
+    for (const k of PIN_KEYS) {
+      this.syncPinSlider(k, "x", clampOff(this.warp.off[k].x + dx));
+      this.syncPinSlider(k, "y", clampOff(this.warp.off[k].y + dy));
+    }
+    this.lastBody = p;
+  }
+
+  private endDrag = (): void => { this.pinDrag = null; this.bodyDrag = false; this.lastBody = null; };
+
   private attachDrag(): void {
     this.glCanvas.addEventListener("mousedown", this.startPinDrag as EventListener, true);
     window.addEventListener("mousemove", this.movePinDrag as EventListener);
-    window.addEventListener("mouseup", () => { this.pinDrag = null; });
+    window.addEventListener("mouseup", this.endDrag);
     this.glCanvas.addEventListener("touchstart", this.startPinDrag as EventListener, { capture: true, passive: false });
     window.addEventListener("touchmove", (e) => {
-      if (this.pinDrag) { this.movePinDrag(e); e.preventDefault(); }
+      if (this.pinDrag || this.bodyDrag) { this.movePinDrag(e); e.preventDefault(); }
     }, { passive: false });
-    window.addEventListener("touchend", () => { this.pinDrag = null; });
+    window.addEventListener("touchend", this.endDrag);
   }
 }

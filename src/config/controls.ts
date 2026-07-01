@@ -58,8 +58,10 @@ export const PANEL: SectionCfg[] = [
       { kind: "checkbox", id: "fitScreen", label: "FIT SCREEN", checked: true },
       { kind: "checkbox", id: "grid", label: "TEST GRID" },
       { kind: "button", id: "resetPins", label: "RESET ANCHORS" },
+      { kind: "button", id: "zoomOut", label: "ZOOM OUT" },
+      { kind: "button", id: "zoomIn", label: "ZOOM IN" },
     ] },
-    { items: [{ kind: "valtext", text: "H hide · F fullscreen · Esc show · click pin + ←↑→↓ nudge (Shift ×10)" }] },
+    { items: [{ kind: "valtext", text: "H hide · F fullscreen · Esc show · click pin + ←↑→↓ nudge (Shift ×10) · drag content to move · ZOOM buttons scale" }] },
   ] },
 
   // Canvas
