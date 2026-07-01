@@ -9,3 +9,17 @@ export function subtractBackground(cur: Uint8ClampedArray, bg: Uint8ClampedArray
   }
   return out;
 }
+
+// Per-pixel brightness/contrast on a grayscale-RGBA image. Contrast pivots at mid-gray
+// so raising it suppresses the dark IR noise floor while boosting bright touches:
+//   out = (v - 128) * contrast + 128 + brightness   (Uint8ClampedArray clamps to 0..255).
+// Identity (returns the input unchanged) at brightness=0, contrast=1.
+export function applyBrightnessContrast(img: Uint8ClampedArray, n: number, brightness: number, contrast: number): Uint8ClampedArray {
+  if (brightness === 0 && contrast === 1) return img;
+  const out = new Uint8ClampedArray(n * 4);
+  for (let i = 0; i < n; i++) {
+    const v = (img[i*4] - 128) * contrast + 128 + brightness;
+    out[i*4] = out[i*4+1] = out[i*4+2] = v; out[i*4+3] = 255;
+  }
+  return out;
+}

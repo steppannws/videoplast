@@ -2,7 +2,7 @@
 // Extracted from the former LeapImageSource so any frame provider can feed it.
 import { findBlobs } from "./blobs.ts";
 import { BlobTracker } from "./tracking.ts";
-import { subtractBackground } from "./preprocess.ts";
+import { subtractBackground, applyBrightnessContrast } from "./preprocess.ts";
 import { buildUndistMap, applyUndist } from "./undistort.ts";
 import { DET_DEFAULTS, UNDIST_DEFAULTS, MIRROR_DEFAULTS } from "../config/defaults.ts";
 import type { DetOpt, UndistOpt, Roi, MirrorOpt, DetBlob, TouchEv } from "../types/index.ts";
@@ -55,7 +55,8 @@ export class IrTouchPipeline {
     }
     this.frame = rgba;
     if (this.bg && this.bg.length !== rgba.length) this.bg = null;
-    const detIn = this.bg ? subtractBackground(rgba, this.bg, w * h) : rgba;
+    const sub = this.bg ? subtractBackground(rgba, this.bg, w * h) : rgba;
+    const detIn = applyBrightnessContrast(sub, w * h, this.opt.brightness, this.opt.contrast);
     const { blobs, bin } = findBlobs({ data: detIn, width: w, height: h }, this.opt);
     const mapped = blobs
       .map((b) => { const { u, v } = roiMap(b.cx, b.cy, w, h, this.roi); return { x: u, y: v, strength: Math.min(1, b.bright/255) }; })

@@ -10,7 +10,7 @@ export const PIN_KEYS: readonly PinKey[] = ["tl", "tr", "br", "bl"];
 export const AXES: readonly Axis[] = ["x", "y"];
 
 // The numeric DetOpt fields (everything except the boolean `invert`).
-export type NumericDetKey = "threshold" | "minArea" | "maxArea" | "blurAmt" | "erosionAmt";
+export type NumericDetKey = "threshold" | "minArea" | "maxArea" | "blurAmt" | "erosionAmt" | "brightness" | "contrast";
 
 // Slider id -> DetOpt key + integer flag. Drives both the IR-detect sliders below
 // and the typed wiring in the source controller (no stringly-typed `as any`).
@@ -20,6 +20,8 @@ export const DET_SLIDERS: ReadonlyArray<{ id: string; key: NumericDetKey; int: b
   { id: "maxArea", key: "maxArea", int: false },
   { id: "blur", key: "blurAmt", int: true },
   { id: "erosion", key: "erosionAmt", int: true },
+  { id: "brightness", key: "brightness", int: true },
+  { id: "contrast", key: "contrast", int: false },
 ];
 
 const slider = (
@@ -105,6 +107,8 @@ export const PANEL: SectionCfg[] = [
       { kind: "checkbox", id: "invert", label: "INVERT" },
       { kind: "checkbox", id: "mirrorX", label: "MIRROR X" },
       { kind: "checkbox", id: "mirrorY", label: "MIRROR Y" },
+      slider("brightness", "BRIGHTNESS", -128, 128, 1, DET_DEFAULTS.brightness),
+      slider("contrast", "CONTRAST", 0, 3, 0.05, DET_DEFAULTS.contrast),
       slider("threshold", "THRESHOLD", 0, 255, 1, DET_DEFAULTS.threshold),
       slider("minArea", "MIN AREA", 0, 500, 1, DET_DEFAULTS.minArea),
       slider("maxArea", "MAX AREA", 100, 20000, 100, DET_DEFAULTS.maxArea),

@@ -149,16 +149,21 @@ export class IrCalibrator {
   private drawHud(opt: DetOpt, blobCount: number): void {
     const ctx = this.maskCtx;
     if (!ctx) return;
-    const text = `THR ${opt.threshold} · BLUR ${opt.blurAmt} · ERO ${opt.erosionAmt}`
-      + ` · MIN ${opt.minArea} · MAX ${opt.maxArea} · INV ${opt.invert ? "on" : "off"} · ${blobCount} blobs`;
+    const lines = [
+      `BRI ${opt.brightness} · CON ${opt.contrast.toFixed(2)} · THR ${opt.threshold} · BLUR ${opt.blurAmt} · ERO ${opt.erosionAmt}`,
+      `MIN ${opt.minArea} · MAX ${opt.maxArea} · INV ${opt.invert ? "on" : "off"} · ${blobCount} blobs`,
+    ];
     ctx.save();
     ctx.font = "11px monospace";
     ctx.textBaseline = "top";
     ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(0,0,0,0.9)";
-    ctx.strokeText(text, 4, 4);
-    ctx.fillStyle = "#0f0";
-    ctx.fillText(text, 4, 4);
+    lines.forEach((line, i) => {
+      const y = 4 + i * 14;
+      ctx.strokeStyle = "rgba(0,0,0,0.9)";
+      ctx.strokeText(line, 4, y);
+      ctx.fillStyle = "#0f0";
+      ctx.fillText(line, 4, y);
+    });
     ctx.restore();
   }
 }
