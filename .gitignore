@@ -5,3 +5,6 @@ spike_frame.pgm
 .DS_Store
 .venv/
 leapc-python-bindings/
+
+docs
+.playwright-mcp
