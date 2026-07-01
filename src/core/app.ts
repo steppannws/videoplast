@@ -58,6 +58,7 @@ const effect = new EffectController(
 const pins = new PinController(glCanvas, pinCanvas, warp, setStatus);
 const calibrator = new IrCalibrator(
   document.getElementById("irPreview") as HTMLCanvasElement | null,
+  document.getElementById("irMaskPreview") as HTMLCanvasElement | null,
   () => sources.getIrSrc(),
   setStatus,
 );

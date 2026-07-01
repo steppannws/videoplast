@@ -3,7 +3,7 @@
 import { TouchSource } from "./touch-source.ts";
 import { IrTouchPipeline } from "../ir/pipeline.ts";
 import type { IrFrameProvider } from "../ir/provider.ts";
-import type { DetOpt, UndistOpt, MirrorOpt, Roi, DetBlob } from "../types/index.ts";
+import type { DetOpt, UndistOpt, MirrorOpt, TouchMap, Roi, DetBlob } from "../types/index.ts";
 
 export class IrSource extends TouchSource {
   readonly pipeline = new IrTouchPipeline();
@@ -19,10 +19,11 @@ export class IrSource extends TouchSource {
   get opt(): DetOpt { return this.pipeline.opt; }
   get undist(): UndistOpt { return this.pipeline.undist; }
   get mirror(): MirrorOpt { return this.pipeline.mirror; }
+  get touchMap(): TouchMap { return this.pipeline.touchMap; }
   get roi(): Roi { return this.pipeline.roi; }
   setRoi(r: Roi): void { this.pipeline.setRoi(r); }
   captureBackground(): void { this.pipeline.captureBackground(); }
-  set previewCb(cb: ((rgba: Uint8ClampedArray, w: number, h: number, blobs: DetBlob[]) => void) | null) { this.pipeline.previewCb = cb; }
+  set previewCb(cb: ((rgba: Uint8ClampedArray, bin: Uint8Array, w: number, h: number, blobs: DetBlob[]) => void) | null) { this.pipeline.previewCb = cb; }
   set statusCb(cb: (s: string) => void) { this.provider.onStatus(cb); }
   start(): void { this.provider.start(); }
   stop(): void { this.provider.stop(); }

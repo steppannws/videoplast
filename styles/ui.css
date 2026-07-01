@@ -82,9 +82,12 @@ button,
   display: none;
 }
 
-#irPreview {
+#irPreview,
+#irMaskPreview {
   border: var(--border-w) solid var(--border);
   margin-top: 6px;
+  width: 320px;
+  height: auto;
 }
 
 /* Utility: !important beats the #ui id selector so a single class hides the
