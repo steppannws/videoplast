@@ -116,12 +116,21 @@ export class IrCalibrator {
       const img = ctx.createImageData(w, h);
       img.data.set(rgba);
       ctx.putImageData(img, 0, 0);
-      ctx.strokeStyle = "#0f0";
-      ctx.lineWidth = 1;
-      for (const b of blobs) ctx.strokeRect(b.cx - 3, b.cy - 3, 6, 6);
+      this.drawBlobBoxes(ctx, blobs);
       if (roi) this.drawRoi(roi, w, h);
     }
     this.drawMask(bin, w, h, blobs, roi, opt);
+  }
+
+  // Green square per blob, side scaled to the blob's extent (~diameter) so bigger
+  // touches read as bigger squares. Min 6px so tiny blobs stay visible.
+  private drawBlobBoxes(ctx: CanvasRenderingContext2D, blobs: DetBlob[]): void {
+    ctx.strokeStyle = "#0f0";
+    ctx.lineWidth = 1;
+    for (const b of blobs) {
+      const s = Math.max(6, Math.sqrt(b.area) * 1.5);
+      ctx.strokeRect(b.cx - s / 2, b.cy - s / 2, s, s);
+    }
   }
 
   // Right canvas: the binary threshold+morphology mask the blob detector runs on,
@@ -134,9 +143,7 @@ export class IrCalibrator {
     const d = img.data;
     for (let i = 0; i < w * h; i++) { const v = bin[i] ? 255 : 0; d[i*4] = d[i*4+1] = d[i*4+2] = v; d[i*4+3] = 255; }
     ctx.putImageData(img, 0, 0);
-    ctx.strokeStyle = "#0f0";
-    ctx.lineWidth = 1;
-    for (const b of blobs) ctx.strokeRect(b.cx - 3, b.cy - 3, 6, 6);
+    this.drawBlobBoxes(ctx, blobs);
     if (roi) {
       ctx.strokeStyle = "#0f0";
       ctx.lineWidth = 2;
