@@ -1,0 +1,38 @@
+/* Reset, page shell, and the two stacked projection canvases. */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  font-family: var(--font-mono);
+  color: var(--text);
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#wrap {
+  position: relative;
+}
+
+#glCanvas {
+  display: block;
+  touch-action: none;
+}
+
+#pinCanvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}

@@ -7,7 +7,7 @@
     "build": "vite build",
     "preview": "vite preview --port 8000",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit && node --test --experimental-strip-types 'src/*.test.js' 'src/*.test.ts'",
+    "test": "tsc --noEmit && node --test --experimental-strip-types 'src/**/*.test.js' 'src/**/*.test.ts'",
     "build-bridge": "bash scripts/build-bridge.sh",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

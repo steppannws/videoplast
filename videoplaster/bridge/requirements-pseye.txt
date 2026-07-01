@@ -1,7 +1,8 @@
 # Optional: PlayStation Eye (IR-modded) support for the bridge.
 # pseyepy is NOT on PyPI — it installs from GitHub and links libusb via cffi.
 #
-# Prereq:  brew install libusb
+# Prereq:  brew install libusb python-tk@3.12
+#          (pseyepy's __init__ force-imports its ui module, which needs tkinter)
 # Install: .venv/bin/pip install -r bridge/requirements-pseye.txt
 #
 # The bridge guards these imports, so it runs fine WITHOUT them
@@ -9,3 +10,8 @@
 cython
 numpy>=1.26.0
 pseyepy @ git+https://github.com/bensondaled/pseyepy.git
+# pseyepy's __init__ also pulls in its ui (Pillow) and io (h5py) modules,
+# even though the bridge only uses Camera for headless capture. Without these
+# the whole `import pseyepy` fails and the PS Eye silently "no levanta".
+pillow
+h5py
