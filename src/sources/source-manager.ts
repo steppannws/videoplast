@@ -57,6 +57,7 @@ export class SourceManager {
         d.int ? (s) => parseInt(s, 10) : parseFloat);
     }
     bindBool("invert", (b) => { this.detOpt.invert = b; if (this.irSrc) this.irSrc.opt.invert = b; });
+    bindBool("diffMode", (b) => { this.detOpt.absDiff = b; if (this.irSrc) this.irSrc.opt.absDiff = b; });
     bindBool("mirrorX", (b) => this.setMirror("x", b));
     bindBool("mirrorY", (b) => this.setMirror("y", b));
     bindBool("undistort", (b) => this.setUndistOn(b));

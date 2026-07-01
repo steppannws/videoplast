@@ -55,7 +55,7 @@ export class IrTouchPipeline {
     }
     this.frame = rgba;
     if (this.bg && this.bg.length !== rgba.length) this.bg = null;
-    const sub = this.bg ? subtractBackground(rgba, this.bg, w * h) : rgba;
+    const sub = this.bg ? subtractBackground(rgba, this.bg, w * h, this.opt.absDiff) : rgba;
     const detIn = applyBrightnessContrast(sub, w * h, this.opt.brightness, this.opt.contrast);
     const { blobs, bin } = findBlobs({ data: detIn, width: w, height: h }, this.opt);
     const mapped = blobs

@@ -23,3 +23,14 @@ test("brightness/contrast: identity, gain, offset, and clamping", () => {
   const b = applyBrightnessContrast(img, 3, 30, 1);
   assert.equal(b[0], 158); assert.equal(b[2*4], 70);
 });
+
+test("abs-diff mode captures pixels darker than background too", () => {
+  const w=3,h=1; const bg=new Uint8ClampedArray([100,100,100,255, 100,100,100,255, 100,100,100,255]);
+  const cur=new Uint8ClampedArray([100,100,100,255, 40,40,40,255, 160,160,160,255]);
+  // directional: darker px -> 0
+  const dir = subtractBackground(cur, bg, w*h);
+  assert.equal(dir[1*4], 0);
+  // abs-diff: darker px -> |40-100| = 60, brighter px -> |160-100| = 60
+  const abs = subtractBackground(cur, bg, w*h, true);
+  assert.equal(abs[0*4], 0); assert.equal(abs[1*4], 60); assert.equal(abs[2*4], 60);
+});

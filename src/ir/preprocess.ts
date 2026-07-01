@@ -1,10 +1,13 @@
 // src/ir/preprocess.ts
-// Subtract a background frame (both RGBA, grayscale-equal channels). Returns new RGBA with
-// max(0, cur-bg) per pixel, replicated across RGB.
-export function subtractBackground(cur: Uint8ClampedArray, bg: Uint8ClampedArray, n: number): Uint8ClampedArray {
+// Subtract a background frame (both RGBA, grayscale-equal channels). Returns new RGBA
+// per pixel, replicated across RGB. Directional by default — max(0, cur-bg) — keeps only
+// pixels brighter than background. With abs=true uses |cur-bg|, so a region that goes
+// darker than background (e.g. a hand's shadow/reflection) also becomes a bright blob.
+export function subtractBackground(cur: Uint8ClampedArray, bg: Uint8ClampedArray, n: number, abs = false): Uint8ClampedArray {
   const out = new Uint8ClampedArray(n * 4);
   for (let i = 0; i < n; i++) {
-    const v = Math.max(0, cur[i*4] - bg[i*4]);
+    const d = cur[i*4] - bg[i*4];
+    const v = abs ? Math.abs(d) : Math.max(0, d);
     out[i*4] = out[i*4+1] = out[i*4+2] = v; out[i*4+3] = 255;
   }
   return out;

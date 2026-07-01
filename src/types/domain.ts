@@ -9,7 +9,7 @@ export interface Roi { x: number; y: number; w: number; h: number; }
 export interface DetOpt {
   threshold: number; minArea: number; maxArea: number;
   blurAmt: number; erosionAmt: number; invert: boolean;
-  brightness: number; contrast: number;
+  brightness: number; contrast: number; absDiff: boolean;
 }
 
 export interface UndistOpt { on: boolean; k1: number; k2: number; map: Int16Array | null; }

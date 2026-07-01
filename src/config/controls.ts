@@ -105,6 +105,7 @@ export const PANEL: SectionCfg[] = [
       { kind: "button", id: "resetZone", label: "RESET ZONE" },
       { kind: "button", id: "restartIr", label: "RESTART IR" },
       { kind: "checkbox", id: "invert", label: "INVERT" },
+      { kind: "checkbox", id: "diffMode", label: "DIFF MODE" },
       { kind: "checkbox", id: "mirrorX", label: "MIRROR X" },
       { kind: "checkbox", id: "mirrorY", label: "MIRROR Y" },
       slider("brightness", "BRIGHTNESS", -128, 128, 1, DET_DEFAULTS.brightness),
