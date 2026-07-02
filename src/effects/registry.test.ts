@@ -9,10 +9,10 @@ import { INK_PARAMS } from "./ink-gl.ts";
 import { REVEAL_PARAMS } from "./reveal-gl.ts";
 import { THERMAL_PARAMS } from "./thermal-gl.ts";
 import { SHATTER_PARAMS } from "./shatter-gl.ts";
-import { PARTICLES_PARAMS } from "./particles-gl.ts";
+import { CHROME_PARAMS } from "./chrome-gl.ts";
 
 test("registry has the six effects in key order", () => {
-  assert.deepEqual(EFFECTS.map((e) => e.id), ["water", "ink", "reveal", "thermal", "shatter", "particles"]);
+  assert.deepEqual(EFFECTS.map((e) => e.id), ["water", "ink", "reveal", "thermal", "shatter", "chrome"]);
 });
 
 test("effect ids are unique", () => {
@@ -41,7 +41,7 @@ const PARAM_SETS: Array<[string, readonly EffectParam[]]> = [
   ["reveal", REVEAL_PARAMS],
   ["thermal", THERMAL_PARAMS],
   ["shatter", SHATTER_PARAMS],
-  ["particles", PARTICLES_PARAMS],
+  ["chrome", CHROME_PARAMS],
 ];
 
 for (const [id, params] of PARAM_SETS) {

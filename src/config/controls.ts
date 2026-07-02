@@ -139,6 +139,14 @@ export const PANEL: SectionCfg[] = [
     slider("touchScaleY", "SCALE Y", 0.5, 2, 0.01, TOUCHMAP_DEFAULTS.scaleY),
   ] }] },
 
+  // Config: export / import / hand-edit the whole settings JSON blob.
+  { rows: [{ items: [
+    { kind: "slabel", text: "Config" },
+    { kind: "button", id: "cfgExport", label: "EXPORT" },
+    { kind: "file", id: "cfgImport", label: "IMPORT", accept: "application/json,.json" },
+    { kind: "button", id: "cfgEdit", label: "EDIT JSON" },
+  ] }] },
+
   // Status
   { rows: [{ items: [{ kind: "valtext", text: "ready", id: "status" }] }] },
 ];

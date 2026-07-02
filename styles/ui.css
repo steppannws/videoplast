@@ -96,6 +96,54 @@ button.active {
   height: auto;
 }
 
+/* JSON settings editor modal (Config section). */
+.cfg-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.cfg-modal__box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(720px, 90vw);
+  max-height: 85vh;
+  padding: 12px;
+  background: var(--panel-bg);
+  border: var(--border-w) solid var(--border-strong);
+}
+
+#cfgEditText {
+  flex: 1;
+  min-height: 50vh;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--fs-ctrl);
+  color: var(--ctrl-text);
+  background: var(--ctrl-bg);
+  border: var(--border-w) solid var(--border);
+  padding: 8px;
+  white-space: pre;
+  overflow: auto;
+}
+
+.cfg-modal__err {
+  font-size: var(--fs-ctrl);
+  color: var(--accent);
+  min-height: 1em;
+}
+
+.cfg-modal__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 /* Utility: !important beats the #ui id selector so a single class hides the
    panel and the conditional camera row alike. */
 .hidden {
