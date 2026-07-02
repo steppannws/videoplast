@@ -66,10 +66,7 @@ export const PANEL: SectionCfg[] = [
       { kind: "slabel", text: "Source" },
       { kind: "select", id: "sourceSel", options: [
         { value: "mouse", label: "MOUSE" },
-        { value: "leap-ir", label: "LEAP IR" },
-        { value: "pseye", label: "PS EYE" },
-        { value: "ir-camera", label: "IR CAMERA" },
-        { value: "leap-z", label: "LEAP Z" },
+        { value: "ir-camera", label: "CAMERA" },
       ] },
     ] },
     { id: "camDeviceRow", cls: "hidden", items: [
