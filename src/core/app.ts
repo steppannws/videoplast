@@ -55,14 +55,18 @@ const effect = new EffectController(
   document.getElementById("effectSel") as HTMLSelectElement | null,
   setStatus,
 );
-const pins = new PinController(glCanvas, pinCanvas, warp, setStatus);
+const isEditing = (): boolean => {
+  const a = document.activeElement;
+  return !!a && (a.tagName === "INPUT" || a.tagName === "SELECT");
+};
+const pins = new PinController(glCanvas, pinCanvas, warp, setStatus, isEditing);
 const calibrator = new IrCalibrator(
   document.getElementById("irPreview") as HTMLCanvasElement | null,
   document.getElementById("irMaskPreview") as HTMLCanvasElement | null,
   () => sources.getIrSrc(),
   setStatus,
 );
-const emitTouch = (ev: TouchEv): void => { effect.active.addTouch(ev); emitter.send(ev); };
+const emitTouch = (ev: TouchEv): void => { effect.active.addTouch(ev); emitter.send(ev); pins.addTouch(ev); };
 const sources = new SourceManager({ glCanvas, emitTouch, setStatus, calibrate: (src) => calibrator.attach(src) });
 
 // --- background + canvas controls -----------------------------------------
@@ -94,10 +98,8 @@ calibrator.wire();
 installOverlay({
   panel: document.getElementById("ui") as HTMLElement,
   body: document.body,
-  isEditing: () => { const a = document.activeElement; return !!a && (a.tagName === "INPUT" || a.tagName === "SELECT"); },
+  isEditing,
   onNudge: (axis, dir, shift) => pins.nudge(axis, dir, shift),
-  onToggleGrid: () => { const c = document.getElementById("grid") as HTMLInputElement | null; if (c) c.click(); },
-  onToggleWarp: () => { const c = document.getElementById("warpEdit") as HTMLInputElement | null; if (c) c.click(); },
   onSelectEffect: (index) => { const e = EFFECTS[index]; if (e) effect.set(e.id); },
   persist: saveSetting,
   initialHidden: getSetting("uiHidden") === true,

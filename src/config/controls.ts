@@ -44,13 +44,18 @@ export const PANEL: SectionCfg[] = [
     { items: [
       { kind: "slabel", text: "Projection" },
       { kind: "checkbox", id: "fitScreen", label: "FIT SCREEN", checked: true },
-      { kind: "checkbox", id: "grid", label: "TEST GRID" },
+      { kind: "checkbox", id: "testPattern", label: "TEST PATTERN" },
+      { kind: "checkbox", id: "showTouches", label: "SHOW TOUCHES" },
       { kind: "checkbox", id: "warpEdit", label: "WARP GRID", checked: true },
+      { kind: "button", id: "modeCorners", label: "CORNERS" },
+      { kind: "button", id: "modeMesh", label: "MESH" },
+      { kind: "button", id: "removeCol", label: "−COL" },
+      { kind: "button", id: "removeRow", label: "−ROW" },
       { kind: "button", id: "resetPins", label: "RESET WARP" },
       { kind: "button", id: "zoomOut", label: "ZOOM OUT" },
       { kind: "button", id: "zoomIn", label: "ZOOM IN" },
     ] },
-    { items: [{ kind: "valtext", text: "H hide · F fullscreen · Esc show · W warp on/off · drag point + ←↑→↓ nudge (Shift ×10) · drag inside to move · ZOOM buttons scale" }] },
+    { items: [{ kind: "valtext", text: "H hide · F fullscreen · Tab corners/mesh · dbl-click line = split · Ctrl+Z undo · arrows nudge · drag inside to move · ZOOM scale" }] },
   ] },
 
   // Canvas
