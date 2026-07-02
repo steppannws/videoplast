@@ -1,5 +1,4 @@
-// A TouchSource that wires a frame provider into the IR pipeline. The three IR
-// devices (Leap, PS Eye, generic camera) are IrSource instances with different providers.
+// A TouchSource that wires a frame provider (IR webcam) into the touch pipeline.
 import { TouchSource } from "./touch-source.ts";
 import { IrTouchPipeline } from "../ir/pipeline.ts";
 import type { IrFrameProvider } from "../ir/provider.ts";

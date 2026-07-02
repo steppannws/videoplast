@@ -1,7 +1,7 @@
 [package]
 name = "videoplaster"
 version = "0.1.0"
-description = "Videoplaster — Leap-as-IR-camera touch projection installation"
+description = "Videoplaster — projection-mapped touch installation (webcam IR detection)"
 edition = "2021"
 rust-version = "1.77"
 

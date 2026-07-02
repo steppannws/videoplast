@@ -1,5 +1,5 @@
 // Device-agnostic IR touch pipeline: a grayscale frame in, tracked TouchEvs out.
-// Extracted from the former LeapImageSource so any frame provider can feed it.
+// Any frame provider can feed it.
 import { findBlobs } from "./blobs.ts";
 import { BlobTracker } from "./tracking.ts";
 import { subtractBackground, applyBrightnessContrast } from "./preprocess.ts";

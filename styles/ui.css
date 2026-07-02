@@ -82,6 +82,12 @@ button,
   display: none;
 }
 
+/* Active warp-mode button (CORNERS / MESH) */
+button.active {
+  background: var(--ctrl-text);
+  color: var(--ctrl-bg);
+}
+
 #irPreview,
 #irMaskPreview {
   border: var(--border-w) solid var(--border);

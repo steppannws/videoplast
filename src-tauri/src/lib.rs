@@ -1,5 +1,5 @@
 // Tauri shell for videoplaster. Owns the kiosk window and the lifecycle of the
-// Leap bridge sidecar. The web frontend is unchanged: it still talks to the
+// TUIO bridge sidecar. The web frontend is unchanged: it still talks to the
 // bridge over ws://localhost:7681, and the bridge still emits TUIO on UDP :3333.
 use std::sync::Mutex;
 
@@ -18,7 +18,7 @@ struct BridgeProc(Mutex<Option<CommandChild>>);
 
 // Spawn the frozen Python bridge as a sidecar and pipe its output to our logs.
 // A missing sidecar (e.g. dev run before the bridge is frozen) is non-fatal: the
-// frontend's mouse source and all effects still work; only the Leap-IR source needs it.
+// frontend's sources and effects still work; only TUIO output needs it.
 fn spawn_bridge(app: &tauri::AppHandle) {
     let cmd = match app.shell().sidecar("videoplaster-bridge") {
         Ok(c) => c.args([

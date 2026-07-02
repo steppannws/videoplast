@@ -7,7 +7,7 @@
   <true/>
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
-  <!-- Load the PyInstaller bridge binary + libLeapC.dylib (nested, separately signed) -->
+  <!-- Load the PyInstaller bridge binary (nested, separately signed) -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
   <!-- Frontend connects to the bridge over ws://localhost; bridge binds the WS server + TUIO UDP -->

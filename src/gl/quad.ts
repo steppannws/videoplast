@@ -1,71 +1,109 @@
-// Pure geometry for the media warp: a 4×4 control-point grid evaluated as a bicubic
-// Catmull-Rom surface, plus small helpers used by the overlay (hit-test, move, scale).
+// Pure geometry for the two-layer warp.
+// Layer 2 lives here: a control mesh in unit-square space with non-uniform knots,
+// evaluated as an index-space Catmull-Rom surface for position AND texture-uv (the
+// same operator for both, so the identity mesh maps (u,v)->(u,v) exactly regardless
+// of knot spacing). Layer 1 (the corner homography) lives in warp-gl.ts.
 import { clamp } from "../util/math.ts";
 import type { Pt } from "./homography.ts";
 import type { PinKey } from "../types/index.ts";
 
 export type Corners = Record<PinKey, { x: number; y: number }>;
 
-// 16 control points, indexed idx(i,j) = j*4 + i  (i = column/x 0..3, j = row/y 0..3).
-export type Grid = Pt[];
-export const gridIdx = (i: number, j: number): number => j * 4 + i;
+export const MESH_MIN = 4, MESH_MAX = 8, KNOT_EPS = 0.04;
 
-// One-dimensional Catmull-Rom on the segment p1→p2 (p0,p3 are the neighbours).
-function cr1(p0: number, p1: number, p2: number, p3: number, t: number): number {
-  const t2 = t * t, t3 = t2 * t;
-  return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+// off[j][i] = unit-space offset of the control point at column i (knot ku[i]) and
+// row j (knot kv[j]). All-zero offsets = identity (flat unit square).
+export interface MeshState { ku: number[]; kv: number[]; off: Pt[][] }
+
+export function defaultMesh(): MeshState {
+  const k = [0, 1 / 3, 2 / 3, 1];
+  return { ku: [...k], kv: [...k], off: k.map(() => k.map(() => ({ x: 0, y: 0 }))) };
 }
 
-export function catmullRom(p0: Pt, p1: Pt, p2: Pt, p3: Pt, t: number): Pt {
-  return { x: cr1(p0.x, p1.x, p2.x, p3.x, t), y: cr1(p0.y, p1.y, p2.y, p3.y, t) };
+export const cloneMesh = (m: MeshState): MeshState =>
+  ({ ku: [...m.ku], kv: [...m.kv], off: m.off.map((r) => r.map((p) => ({ ...p }))) });
+
+// Segment index s such that knots[s] <= t < knots[s+1], clamped to a valid segment.
+function seg(knots: number[], t: number): number {
+  for (let i = 0; i < knots.length - 1; i++) if (t < knots[i + 1]) return i;
+  return knots.length - 2;
 }
 
-// Evaluate the bicubic Catmull-Rom surface at (u,v) ∈ [0,1]². Passes through the control
-// points; column/row neighbours are clamped to [0,3] at the boundaries.
-export function evalGrid(g: Grid, u: number, v: number): Pt {
-  const fu = u * 3, ci = clamp(Math.floor(fu), 0, 2), tu = fu - ci;
-  const fv = v * 3, rj = clamp(Math.floor(fv), 0, 2), tv = fv - rj;
-  const cols = [clamp(ci - 1, 0, 3), ci, ci + 1, clamp(ci + 2, 0, 3)];
-  const rows = [clamp(rj - 1, 0, 3), rj, rj + 1, clamp(rj + 2, 0, 3)];
-  const rowPts: Pt[] = [];
-  for (let r = 0; r < 4; r++) {
-    const j = rows[r];
-    rowPts.push(catmullRom(g[gridIdx(cols[0], j)], g[gridIdx(cols[1], j)], g[gridIdx(cols[2], j)], g[gridIdx(cols[3], j)], tu));
+// Non-uniform Catmull-Rom (Hermite form, finite-difference tangents parameterized by
+// the knot values) across a full row/column of points, evaluated at global param t
+// inside segment s. Exactly linear for identity data (pts[i] tracks knots[i]) at ANY
+// knot spacing — the property that keeps the un-warped image undistorted.
+function crAxis(pts: Pt[], knots: number[], s: number, t: number): Pt {
+  const n = pts.length;
+  const B = pts[s], C = pts[s + 1];
+  const kb = knots[s], kc = knots[s + 1];
+  const h = kc - kb;
+  const lt = (t - kb) / h;
+  const oneSided = { x: (C.x - B.x) / h, y: (C.y - B.y) / h };
+  const tb = s > 0
+    ? { x: (C.x - pts[s - 1].x) / (kc - knots[s - 1]), y: (C.y - pts[s - 1].y) / (kc - knots[s - 1]) }
+    : oneSided;
+  const tc = s + 2 < n
+    ? { x: (pts[s + 2].x - B.x) / (knots[s + 2] - kb), y: (pts[s + 2].y - B.y) / (knots[s + 2] - kb) }
+    : oneSided;
+  const t2 = lt * lt, t3 = t2 * lt;
+  const h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + lt, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
+  return {
+    x: h00 * B.x + h10 * h * tb.x + h01 * C.x + h11 * h * tc.x,
+    y: h00 * B.y + h10 * h * tb.y + h01 * C.y + h11 * h * tc.y,
+  };
+}
+
+// Evaluate surface position and texture-uv at (u,v) ∈ [0,1]².
+export function evalMesh(m: MeshState, u: number, v: number): { pos: Pt; uv: Pt } {
+  const si = seg(m.ku, u), sj = seg(m.kv, v);
+  // Interpolate each involved row along u, then interpolate the results along v.
+  // Row results are parameterized by kv (the row knots) for the second pass.
+  const colPos: Pt[] = [], colUv: Pt[] = [];
+  for (let j = 0; j < m.kv.length; j++) {
+    const pos: Pt[] = m.ku.map((k, i) => ({ x: k + m.off[j][i].x, y: m.kv[j] + m.off[j][i].y }));
+    const uv: Pt[] = m.ku.map((k) => ({ x: k, y: m.kv[j] }));
+    colPos.push(crAxis(pos, m.ku, si, u));
+    colUv.push(crAxis(uv, m.ku, si, u));
   }
-  return catmullRom(rowPts[0], rowPts[1], rowPts[2], rowPts[3], tv);
+  return { pos: crAxis(colPos, m.kv, sj, v), uv: crAxis(colUv, m.kv, sj, v) };
 }
 
-// Regular 4×4 grid over a w×h rectangle (identity warp).
-export function baseGrid(w: number, h: number): Grid {
-  const g: Grid = [];
-  for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) g.push({ x: (i / 3) * w, y: (j / 3) * h });
-  return g;
-}
-
-// Apply 16 per-point offsets to the base grid.
-export function gridFromOffsets(off: Pt[], w: number, h: number): Grid {
-  return baseGrid(w, h).map((p, k) => ({ x: p.x + off[k].x, y: p.y + off[k].y }));
-}
-
-// Index of the control point nearest to (px,py).
-export function nearestPoint(px: number, py: number, g: Grid): number {
-  let best = 0, bd = Infinity;
-  for (let k = 0; k < g.length; k++) {
-    const d = (g[k].x - px) ** 2 + (g[k].y - py) ** 2;
-    if (d < bd) { bd = d; best = k; }
+// Insert a knot at t; the new line's control points are sampled from the current
+// surface so the shape is preserved at the sampled positions. Null when at the cap,
+// out of range, or within KNOT_EPS of an existing knot.
+export function insertKnot(m: MeshState, axis: "u" | "v", t: number): MeshState | null {
+  const knots = axis === "u" ? m.ku : m.kv;
+  if (knots.length >= MESH_MAX) return null;
+  if (t <= 0 || t >= 1 || knots.some((k) => Math.abs(k - t) < KNOT_EPS)) return null;
+  const pos = knots.findIndex((k) => k > t);
+  const n = cloneMesh(m);
+  if (axis === "u") {
+    n.ku.splice(pos, 0, t);
+    for (let j = 0; j < n.kv.length; j++) {
+      const s = evalMesh(m, t, m.kv[j]).pos;
+      n.off[j].splice(pos, 0, { x: s.x - t, y: s.y - m.kv[j] });
+    }
+  } else {
+    n.kv.splice(pos, 0, t);
+    const row = n.ku.map((k) => {
+      const s = evalMesh(m, k, t).pos;
+      return { x: s.x - k, y: s.y - t };
+    });
+    n.off.splice(pos, 0, row);
   }
-  return best;
+  return n;
 }
 
-export function centroidOf(g: Grid): Pt {
-  let sx = 0, sy = 0;
-  for (const p of g) { sx += p.x; sy += p.y; }
-  return { x: sx / g.length, y: sy / g.length };
-}
-
-// Scale every point about a centre by `factor`.
-export function scalePoints(g: Grid, factor: number, ctr: Pt): Grid {
-  return g.map((p) => ({ x: ctr.x + (p.x - ctr.x) * factor, y: ctr.y + (p.y - ctr.y) * factor }));
+// Remove an interior knot (ends pinned, floor MESH_MIN). Null when not allowed.
+export function removeKnot(m: MeshState, axis: "u" | "v", index: number): MeshState | null {
+  const knots = axis === "u" ? m.ku : m.kv;
+  if (knots.length <= MESH_MIN) return null;
+  if (index <= 0 || index >= knots.length - 1) return null;
+  const n = cloneMesh(m);
+  if (axis === "u") { n.ku.splice(index, 1); for (const r of n.off) r.splice(index, 1); }
+  else { n.kv.splice(index, 1); n.off.splice(index, 1); }
+  return n;
 }
 
 // Convex point-in-polygon over the ordered corners; boundary counts as inside.
