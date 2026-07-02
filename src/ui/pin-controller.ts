@@ -390,28 +390,39 @@ export class PinController {
     this.dragCorner = null; this.dragMesh = null; this.bodyDrag = false; this.lastBody = null;
   };
 
+  // Distance from p to the polyline sampled by pts (params in ts), with the line
+  // parameter interpolated along the nearest segment.
+  private nearestOnPolyline(p: Pt, pts: Pt[], ts: number[]): { t: number; d: number } {
+    let best = { t: ts[0], d: Infinity };
+    for (let s = 0; s < pts.length - 1; s++) {
+      const a = pts[s], b = pts[s + 1];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len2 = dx * dx + dy * dy;
+      const f = len2 === 0 ? 0 : clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / len2, 0, 1);
+      const qx = a.x + f * dx, qy = a.y + f * dy;
+      const d = Math.hypot(p.x - qx, p.y - qy);
+      if (d < best.d) best = { t: ts[s] + f * (ts[s + 1] - ts[s]), d };
+    }
+    return best;
+  }
+
   private onDblClick = (e: MouseEvent): void => {
     if (!this.showGrid) return;
     const p = this.canvasPos(e);
     const m = this.warp.mesh;
+    const ts = Array.from({ length: LINE_SAMPLES + 1 }, (_, s) => s / LINE_SAMPLES);
     let best: { axis: "u" | "v"; t: number; d: number } | null = null;
-    // Rows (horizontal lines, v fixed): the nearest sample's u is where a COLUMN goes.
+    // Rows (horizontal lines, v fixed): the nearest point's u is where a COLUMN goes.
     for (const kv of m.kv) {
-      for (let s = 0; s <= LINE_SAMPLES; s++) {
-        const t = s / LINE_SAMPLES;
-        const sp = this.toScreen(evalMesh(m, t, kv).pos);
-        const d = Math.hypot(p.x - sp.x, p.y - sp.y);
-        if (d < LINE_HIT && (!best || d < best.d)) best = { axis: "u", t, d };
-      }
+      const pts = ts.map((t) => this.toScreen(evalMesh(m, t, kv).pos));
+      const r = this.nearestOnPolyline(p, pts, ts);
+      if (r.d < LINE_HIT && (!best || r.d < best.d)) best = { axis: "u", t: r.t, d: r.d };
     }
-    // Columns (vertical lines, u fixed): the nearest sample's v is where a ROW goes.
+    // Columns (vertical lines, u fixed): the nearest point's v is where a ROW goes.
     for (const ku of m.ku) {
-      for (let s = 0; s <= LINE_SAMPLES; s++) {
-        const t = s / LINE_SAMPLES;
-        const sp = this.toScreen(evalMesh(m, ku, t).pos);
-        const d = Math.hypot(p.x - sp.x, p.y - sp.y);
-        if (d < LINE_HIT && (!best || d < best.d)) best = { axis: "v", t, d };
-      }
+      const pts = ts.map((t) => this.toScreen(evalMesh(m, ku, t).pos));
+      const r = this.nearestOnPolyline(p, pts, ts);
+      if (r.d < LINE_HIT && (!best || r.d < best.d)) best = { axis: "v", t: r.t, d: r.d };
     }
     if (!best) return;
     const next = insertKnot(m, best.axis, best.t);
