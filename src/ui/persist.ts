@@ -18,6 +18,33 @@ export function saveSetting(key: string, value: unknown): void {
   localStorage.setItem(KEY, JSON.stringify(_cache));
 }
 
+// Snapshot of every persisted setting, for the JSON export/edit UI.
+export function getAllSettings(): Record<string, unknown> {
+  return { ..._cache };
+}
+
+// Pretty-printed JSON of the whole settings blob (what the user downloads/edits).
+export function exportSettings(): string {
+  return JSON.stringify(_cache, null, 2);
+}
+
+// Parse + validate a settings JSON string. Throws on malformed JSON or a
+// non-object (array / primitive / null) top-level value.
+export function parseSettings(json: string): Record<string, unknown> {
+  const parsed = JSON.parse(json) as unknown;
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Settings JSON must be an object");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+// Replace the entire settings blob (from import or the JSON editor) and persist
+// it. Callers reload the page afterwards so every bindControl re-reads its value.
+export function replaceSettings(obj: Record<string, unknown>): void {
+  _cache = { ...obj };
+  localStorage.setItem(KEY, JSON.stringify(_cache));
+}
+
 // Restore a control's saved value (if any), apply(value) to sync live state,
 // save+apply on change, and (if fmt given + an `id+"v"` element exists) update its readout.
 export function bindControl(

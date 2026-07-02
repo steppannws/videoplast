@@ -14,6 +14,7 @@ import { mountControls } from "../ui/controls-panel.ts";
 import { EffectController } from "../ui/effect-controller.ts";
 import { PinController } from "../ui/pin-controller.ts";
 import { IrCalibrator } from "../ui/ir-calibrator.ts";
+import { ConfigController } from "../ui/config-controller.ts";
 import { SourceManager } from "../sources/source-manager.ts";
 import { startRenderLoop } from "./render-loop.ts";
 import type { TouchEv } from "../types/index.ts";
@@ -94,6 +95,7 @@ bindBool("fitScreen", (b) => {
 // --- wiring ----------------------------------------------------------------
 pins.wire();
 calibrator.wire();
+new ConfigController(setStatus).wire();
 
 installOverlay({
   panel: document.getElementById("ui") as HTMLElement,
