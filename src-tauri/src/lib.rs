@@ -49,9 +49,18 @@ fn spawn_bridge(app: &tauri::AppHandle) {
 }
 
 // Kill the bridge child (if any) so no orphan process is left after exit.
+// The sidecar is a PyInstaller --onefile bootloader that re-execs itself as a
+// second process running the actual Python app. SIGKILL can't be forwarded, so
+// child.kill() would orphan that inner process; SIGTERM is forwarded by the
+// bootloader and takes both down.
 fn kill_bridge(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<BridgeProc>() {
         if let Some(child) = state.0.lock().unwrap().take() {
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(child.pid() as libc::pid_t, libc::SIGTERM);
+            }
+            #[cfg(not(unix))]
             let _ = child.kill();
         }
     }
