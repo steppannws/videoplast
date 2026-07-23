@@ -25,6 +25,9 @@ fn spawn_bridge(app: &tauri::AppHandle) {
             "--ws-port", WS_PORT,
             "--tuio-ip", TUIO_IP,
             "--tuio-port", TUIO_PORT,
+            // The bridge watches this pid and exits when it dies, so even a
+            // force-quit of the app (no ExitRequested) can't orphan it.
+            "--app-pid", &std::process::id().to_string(),
         ]),
         Err(e) => {
             eprintln!("[bridge] sidecar unavailable: {e} (mouse source + effects still work)");
@@ -57,8 +60,20 @@ fn kill_bridge(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<BridgeProc>() {
         if let Some(child) = state.0.lock().unwrap().take() {
             #[cfg(unix)]
-            unsafe {
-                libc::kill(child.pid() as libc::pid_t, libc::SIGTERM);
+            {
+                let pid = child.pid() as libc::pid_t;
+                unsafe { libc::kill(pid, libc::SIGTERM) };
+                // Grace period, then SIGKILL in case the bridge hangs on
+                // SIGTERM. The inner Python process may survive the SIGKILL
+                // (it can't be forwarded), but its --app-pid watchdog reaps
+                // it within a second of this process exiting.
+                for _ in 0..20 {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    if unsafe { libc::kill(pid, 0) } != 0 {
+                        return;
+                    }
+                }
+                unsafe { libc::kill(pid, libc::SIGKILL) };
             }
             #[cfg(not(unix))]
             let _ = child.kill();

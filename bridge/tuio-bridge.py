@@ -1,9 +1,21 @@
 # bridge/tuio-bridge.py
 """WS :7681 -> TUIO relay. Receives TouchEvent JSON from the browser (any source:
 mouse or camera) and emits TUIO 1.1 /tuio/2Dcur to UDP :3333."""
-import asyncio, json, argparse
+import asyncio, json, argparse, os, threading, time
 import websockets
 from tuio import build_2dcur_bundle
+
+
+def watch_app(pid):
+    """Exit when the host app dies. Covers force-quit (SIGKILL), where the app
+    never gets a chance to terminate us. os._exit so a hung main loop can't
+    keep the process alive."""
+    while True:
+        time.sleep(1)
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            os._exit(0)
 
 
 class TuioOut:
@@ -55,4 +67,9 @@ if __name__ == "__main__":
     p.add_argument("--ws-port", type=int, default=7681)
     p.add_argument("--tuio-ip", default="127.0.0.1")
     p.add_argument("--tuio-port", type=int, default=3333)
-    asyncio.run(main(p.parse_args()))
+    p.add_argument("--app-pid", type=int, default=0,
+                   help="exit when this process dies (0 = disabled)")
+    args = p.parse_args()
+    if args.app_pid:
+        threading.Thread(target=watch_app, args=(args.app_pid,), daemon=True).start()
+    asyncio.run(main(args))
